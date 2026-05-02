@@ -61,6 +61,16 @@ impl PreFetcher {
     ) -> InjectedContext {
         let entities = fact_index::extract_entities(prompt);
 
+        // Detect URLs in prompt
+        let urls = extract_urls(prompt);
+
+        // Fetch URL content (lightweight page previews)
+        let url_snippets = if !urls.is_empty() {
+            fetch_url_previews(&self.client, &urls).await
+        } else {
+            Vec::new()
+        };
+
         // Web search (concurrent, cached)
         let web_results = if self.config.web_search_enabled {
             self.web_search_batch(&entities).await
@@ -76,7 +86,7 @@ impl PreFetcher {
         };
 
         // Convert web results to snippets
-        let snippets: Vec<WebSnippet> = web_results
+        let mut snippets: Vec<WebSnippet> = web_results
             .iter()
             .map(|r| {
                 let query = entities
@@ -94,6 +104,9 @@ impl PreFetcher {
                 }
             })
             .collect();
+
+        // Prepend URL fetches (highest priority — exactly what user sent)
+        snippets.splice(0..0, url_snippets);
 
         // Assemble context
         injector::assemble_context(
@@ -162,6 +175,75 @@ async fn search_direct(
 }
 
 // Direct search implementations for batch mode (no caching).
+
+/// Extract URLs from text using regex.
+fn extract_urls(text: &str) -> Vec<String> {
+    // Match http:// or https:// followed by non-whitespace chars
+    let re = regex::Regex::new(r"https?://\S+").unwrap();
+    re.find_iter(text)
+        .map(|m| m.as_str().trim_end_matches(&['.', ',', ')', ']', '}', '"', '\''][..]).to_string())
+        .collect()
+}
+
+/// Fetch lightweight page previews for URLs.
+async fn fetch_url_previews(client: &Client, urls: &[String]) -> Vec<WebSnippet> {
+    let mut snippets = Vec::new();
+
+    for url in urls.iter().take(3) {
+        // Fetch first 4KB of page
+        let resp = match client
+            .get(url)
+            .timeout(std::time::Duration::from_secs(5))
+            .send()
+            .await
+        {
+            Ok(r) => r,
+            Err(_) => continue,
+        };
+
+        // Read up to 4KB
+        let body = match resp.text().await {
+            Ok(b) => b,
+            Err(_) => continue,
+        };
+
+        // Extract title + first meaningful text
+        let title = extract_html_title(&body).unwrap_or_else(|| url.to_string());
+        let text = strip_html_tags(&body);
+        let preview = truncate_url_preview(&text, 200);
+
+        snippets.push(WebSnippet {
+            query: "url_fetch".to_string(),
+            snippet: format!("[URL] {} - {}", title, preview),
+            url: url.clone(),
+        });
+    }
+
+    snippets
+}
+
+fn extract_html_title(html: &str) -> Option<String> {
+    let re = regex::Regex::new(r"<title[^>]*>(.*?)</title>").unwrap();
+    re.captures(html)
+        .and_then(|c| c.get(1))
+        .map(|m| m.as_str().trim().to_string())
+}
+
+fn strip_html_tags(html: &str) -> String {
+    let re = regex::Regex::new(r"<[^>]*>").unwrap();
+    let stripped = re.replace_all(html, " ");
+    let re_ws = regex::Regex::new(r"\s+").unwrap();
+    re_ws.replace_all(&stripped, " ").trim().to_string()
+}
+
+fn truncate_url_preview(text: &str, max_chars: usize) -> String {
+    if text.len() <= max_chars {
+        text.to_string()
+    } else {
+        let boundary = text[..max_chars].rfind(' ').unwrap_or(max_chars);
+        format!("{}...", &text[..boundary])
+    }
+}
 
 async fn search_brave_direct(
     client: &Client,
