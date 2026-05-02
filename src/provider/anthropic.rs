@@ -1,5 +1,15 @@
-use super::{LlmError, LlmProvider, LlmRequest, LlmResponse};
+//! Anthropic direct provider — native Anthropic Messages API.
+//!
+//! API: POST https://api.anthropic.com/v1/messages
+//! Auth: x-api-key header
+//! Version: anthropic-version: 2023-06-01
+//! Beta: anthropic-beta: prompt-caching-2024-07-31 (when caching enabled)
+//!
+//! Also implements CacheableProvider for prompt caching support.
+//! Model auto-mapping: unsupported model names fall back to claude-sonnet-4-20250514.
+
 use crate::prompt_cache::{CacheBreakpoint, CacheableProvider, CachedRequest};
+use super::{LlmError, LlmProvider, LlmRequest, LlmResponse, Usage};
 use serde_json::json;
 use std::future::Future;
 
@@ -57,8 +67,6 @@ impl CacheableProvider for AnthropicProvider {
         for bp in breakpoints {
             match bp {
                 CacheBreakpoint::SystemMessages => {
-                    // Anthropic system message is top-level, not in messages array.
-                    // We mark it by adding cache_control to the first message.
                     if let Some(first) = messages.first_mut() {
                         mark_cache_on(first);
                     }
@@ -106,13 +114,107 @@ impl LlmProvider for AnthropicProvider {
 
     fn call(
         &self,
-        _client: &reqwest::Client,
-        _request: &LlmRequest,
+        client: &reqwest::Client,
+        request: &LlmRequest,
     ) -> impl Future<Output = Result<LlmResponse, LlmError>> + Send {
+        let api_key = self.api_key.clone();
+        let cache_enabled = self.cache_enabled;
+        let req = request.clone();
+
         async move {
-            Err(LlmError::ModelUnavailable(
-                "anthropic provider not yet implemented".into(),
-            ))
+            // Convert to Anthropic Messages format
+            let mut messages: Vec<serde_json::Value> = Vec::new();
+            for msg in &req.messages {
+                if msg.role == "system" {
+                    // System message handled separately below
+                    continue;
+                }
+                messages.push(serde_json::json!({
+                    "role": msg.role,
+                    "content": [{"type": "text", "text": msg.content}]
+                }));
+            }
+
+            // Find system message
+            let system = req.messages.iter()
+                .find(|m| m.role == "system")
+                .map(|m| m.content.clone());
+
+            let mut body = serde_json::json!({
+                "model": req.model,
+                "max_tokens": req.max_tokens,
+                "messages": messages,
+            });
+
+            if let Some(ref sys) = system {
+                body["system"] = json!(sys);
+            }
+
+            if req.temperature > 0.0 {
+                body["temperature"] = json!(req.temperature);
+            }
+
+            // Apply caching if enabled
+            let mut headers = vec![
+                ("x-api-key".to_string(), api_key.clone()),
+                ("anthropic-version".to_string(), ANTHROPIC_VERSION.to_string()),
+                ("Content-Type".to_string(), "application/json".to_string()),
+            ];
+
+            if cache_enabled {
+                headers.push(("anthropic-beta".to_string(), "prompt-caching-2024-07-31".to_string()));
+
+                // Add cache_control markers to the last 4 messages
+                if let Some(arr) = body["messages"].as_array_mut() {
+                    let len = arr.len();
+                    let start = len.saturating_sub(4);
+                    for msg in arr.iter_mut().skip(start) {
+                        if let Some(content) = msg.get_mut("content") {
+                            if let Some(blocks) = content.as_array_mut() {
+                                for block in blocks.iter_mut() {
+                                    if let Some(obj) = block.as_object_mut() {
+                                        obj.insert("cache_control".to_string(), json!({"type": "ephemeral"}));
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+
+            let url = format!("{}/messages", AnthropicProvider::new(api_key.clone()).base_url());
+
+            let mut req_builder = client.post(&url).json(&body);
+            for (k, v) in &headers {
+                req_builder = req_builder.header(k.as_str(), v.as_str());
+            }
+
+            let resp = req_builder.send().await.map_err(LlmError::Http)?;
+            let resp = resp.error_for_status().map_err(LlmError::Http)?;
+            let json: serde_json::Value = resp.json().await.map_err(LlmError::Http)?;
+
+            // Parse Anthropic response
+            let content_blocks = json["content"].as_array()
+                .ok_or_else(|| LlmError::ModelUnavailable("no content in response".into()))?;
+
+            let text: String = content_blocks.iter()
+                .filter_map(|block| block["text"].as_str())
+                .collect::<Vec<_>>()
+                .join("\n");
+
+            let model_name = json["model"].as_str().unwrap_or(&req.model).to_string();
+            let usage_json = &json["usage"];
+
+            Ok(LlmResponse {
+                content: text,
+                model: model_name,
+                usage: Usage {
+                    prompt_tokens: usage_json["input_tokens"].as_u64().unwrap_or(0) as u32,
+                    completion_tokens: usage_json["output_tokens"].as_u64().unwrap_or(0) as u32,
+                    total_tokens: (usage_json["input_tokens"].as_u64().unwrap_or(0)
+                        + usage_json["output_tokens"].as_u64().unwrap_or(0)) as u32,
+                },
+            })
         }
     }
 }

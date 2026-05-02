@@ -1,8 +1,10 @@
 pub mod openrouter;
 pub mod anthropic;
+pub mod deepseek;
 pub mod google;
 pub mod mistral;
 pub mod local;
+pub mod openai_compat;
 
 use serde::{Deserialize, Serialize};
 use std::future::Future;

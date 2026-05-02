@@ -1,3 +1,9 @@
+//! Mistral AI provider — OpenAI-compatible API.
+//! Base URL: https://api.mistral.ai/v1
+//! Auth: Bearer token
+//! Models: mistral-large, mistral-small, mistral-small-3.2, codestral, etc.
+
+use super::openai_compat;
 use super::{LlmError, LlmProvider, LlmRequest, LlmResponse};
 use std::future::Future;
 
@@ -22,13 +28,26 @@ impl LlmProvider for MistralProvider {
 
     fn call(
         &self,
-        _client: &reqwest::Client,
-        _request: &LlmRequest,
+        client: &reqwest::Client,
+        request: &LlmRequest,
     ) -> impl Future<Output = Result<LlmResponse, LlmError>> + Send {
+        let api_key = self.api_key.clone();
+        let base_url = self.base_url().to_string();
+        let req = request.clone();
+
         async move {
-            Err(LlmError::ModelUnavailable(
-                "mistral provider not yet implemented".into(),
-            ))
+            openai_compat::openai_compat_call(client, &base_url, &api_key, &req).await
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_mistral_base_url() {
+        let provider = MistralProvider::new("test".into());
+        assert_eq!(provider.base_url(), "https://api.mistral.ai/v1");
     }
 }

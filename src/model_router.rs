@@ -25,15 +25,21 @@ impl ModelRouter {
         vec![
             ModelTier {
                 complexity: TaskComplexity::Trivial,
-                primary: "openrouter/google/gemini-flash-2.5".into(),
-                fallbacks: vec!["openrouter/mistralai/mistral-small-3.2".into()],
-                max_tokens: 1024,
+                primary: "deepseek/deepseek-v4-flash".into(),
+                fallbacks: vec![
+                    "openrouter/google/gemini-flash-2.5".into(),
+                    "openrouter/mistralai/mistral-small-3.2".into(),
+                ],
+                max_tokens: 2048,
                 temperature: 0.3,
             },
             ModelTier {
                 complexity: TaskComplexity::Standard,
                 primary: "openrouter/mistralai/mistral-small-3.2".into(),
-                fallbacks: vec!["openrouter/google/gemini-flash-2.5".into()],
+                fallbacks: vec![
+                    "openrouter/google/gemini-flash-2.5".into(),
+                    "deepseek/deepseek-v4-flash".into(),
+                ],
                 max_tokens: 4096,
                 temperature: 0.5,
             },
@@ -41,8 +47,8 @@ impl ModelRouter {
                 complexity: TaskComplexity::Complex,
                 primary: "openrouter/anthropic/claude-sonnet-4-6".into(),
                 fallbacks: vec![
+                    "openrouter/deepseek/deepseek-v4-pro".into(),
                     "openrouter/mistralai/mistral-small-3.2".into(),
-                    "openrouter/google/gemini-flash-2.5".into(),
                 ],
                 max_tokens: 8192,
                 temperature: 0.7,
@@ -50,7 +56,10 @@ impl ModelRouter {
             ModelTier {
                 complexity: TaskComplexity::Critical,
                 primary: "openrouter/anthropic/claude-opus-4-6".into(),
-                fallbacks: vec!["openrouter/anthropic/claude-sonnet-4-6".into()],
+                fallbacks: vec![
+                    "openrouter/anthropic/claude-sonnet-4-6".into(),
+                    "openrouter/deepseek/deepseek-v4-pro".into(),
+                ],
                 max_tokens: 4096,
                 temperature: 0.1,
             },
