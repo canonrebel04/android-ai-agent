@@ -50,13 +50,27 @@ pub trait Skill: Send + Sync {
 
 pub struct TomlSkill {
     config: SkillConfig,
+    instructions: Option<String>,
 }
 
 impl TomlSkill {
     pub fn load(path: &Path) -> Result<Self, Box<dyn std::error::Error>> {
         let content = std::fs::read_to_string(path)?;
         let config: SkillConfig = toml::from_str(&content)?;
-        Ok(Self { config })
+        let md_path = path.with_extension("md");
+        let instructions = if md_path.exists() {
+            Some(std::fs::read_to_string(&md_path)?)
+        } else {
+            None
+        };
+        Ok(Self {
+            config,
+            instructions,
+        })
+    }
+
+    pub fn instructions(&self) -> Option<&str> {
+        self.instructions.as_deref()
     }
 }
 
