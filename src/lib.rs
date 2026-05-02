@@ -8,3 +8,4 @@ pub mod complexity_classifier;
 pub mod events;
 pub mod safety;
 pub mod agent_loop;
+pub mod identity;
