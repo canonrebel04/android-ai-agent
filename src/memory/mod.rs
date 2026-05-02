@@ -10,3 +10,4 @@ pub mod fact_index;
 pub mod injector;
 pub mod deduplicator;
 pub mod compactor;
+pub mod pre_fetcher;

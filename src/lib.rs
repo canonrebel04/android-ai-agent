@@ -15,4 +15,5 @@ pub mod prompt_cache;
 pub mod budget_tracker;
 pub mod memory;
 pub mod soul;
+pub mod web_prefetch;
 pub mod jni_exports;

@@ -3,6 +3,8 @@ use crate::complexity_classifier::{self, TaskComplexity};
 use crate::context_manager::ContextManager;
 use crate::events::agent_events::AgentEvent;
 use crate::http_client::HttpClient;
+use crate::memory::fact_store::FactStore;
+use crate::memory::pre_fetcher::PreFetcher;
 use crate::model_router::ModelRouter;
 use crate::provider::{LlmError, LlmProvider};
 use crate::prompt_cache::CacheableProvider;
@@ -278,6 +280,35 @@ impl AgentLoop {
             reason: format!("Reached max steps ({})", self.config.max_steps),
         });
         Err(LlmError::AllFallbacksExhausted)
+    }
+
+    /// Full pipeline: pre-fetch (web + memory) → inject → run.
+    /// This is the primary entry point for production use.
+    pub async fn run_with_prefetch<P: LlmProvider>(
+        &mut self,
+        http: &HttpClient,
+        provider: &P,
+        router: &ModelRouter,
+        ctx: &mut ContextManager,
+        prompt: &str,
+        system_prompt: &str,
+        prefetcher: &PreFetcher,
+        fact_store: &FactStore,
+        session_summary: Option<&str>,
+    ) -> Result<String, LlmError> {
+        // ── Pre-fetch: web search + memory probe ──
+        let injected = prefetcher.fetch(fact_store, prompt, session_summary).await;
+
+        // Augment system prompt with pre-fetched context
+        let augmented_prompt = if injected.fact_count > 0 || injected.has_web_results {
+            format!("{}\n\n{}", system_prompt, injected.xml_block)
+        } else {
+            system_prompt.to_string()
+        };
+
+        // Run the standard agent loop with augmented prompt
+        self.run(http, provider, router, ctx, prompt, &augmented_prompt)
+            .await
     }
 }
 
