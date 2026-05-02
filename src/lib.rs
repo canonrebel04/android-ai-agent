@@ -10,4 +10,5 @@ pub mod safety;
 pub mod agent_loop;
 pub mod identity;
 pub mod memory_manager;
+pub mod gateway_server;
 pub mod jni_exports;
