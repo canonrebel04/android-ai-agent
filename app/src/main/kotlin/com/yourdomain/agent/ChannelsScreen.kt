@@ -35,6 +35,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
@@ -87,6 +88,7 @@ private fun TelegramCard() {
     var enabled by remember { mutableStateOf(false) }
     var botToken by remember { mutableStateOf("") }
     var testResult by remember { mutableStateOf<String?>(null) }
+    val context = LocalContext.current
 
     Card(
         modifier = Modifier.fillMaxWidth(),
@@ -165,10 +167,16 @@ private fun TelegramCard() {
                     ) {
                         Button(
                             onClick = {
-                                testResult = if (botToken.isNotBlank())
-                                    "Connection successful!"
-                                else
-                                    "Please enter a bot token"
+                                if (botToken.isNotBlank()) {
+                                    // Save token and start service
+                                    val prefs = context.getSharedPreferences("AgentPrefs", android.content.Context.MODE_PRIVATE)
+                                    prefs.edit().putString("telegramToken", botToken).apply()
+                                    val intent = Intent(context, TelegramBotService::class.java)
+                                    context.startService(intent)
+                                    testResult = "Connected! Bot is running."
+                                } else {
+                                    testResult = "Please enter a bot token"
+                                }
                             },
                             enabled = botToken.isNotBlank(),
                             modifier = Modifier.weight(1f),
