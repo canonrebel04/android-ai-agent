@@ -131,10 +131,31 @@ fun SettingsScreen() {
             // ── Budget ──
             SectionHeader("\uD83D\uDCB0 Budget")
 
+            // Current spend display
+            val currentCost by remember {
+                mutableStateOf(try { RustBridge.getMonthlyCost() } catch (_: Exception) { "0.00" })
+            }
+            val overBudget by remember {
+                mutableStateOf(try { RustBridge.isOverBudget() } catch (_: Exception) { false })
+            }
+
+            Text(
+                text = "Current spend this month: $$currentCost",
+                style = MaterialTheme.typography.labelMedium,
+                color = if (overBudget)
+                    MaterialTheme.colorScheme.error
+                else
+                    MaterialTheme.colorScheme.onSurfaceVariant,
+                modifier = Modifier.padding(bottom = 8.dp),
+            )
+
             NumericSetting(
                 label = "Budget Alert Threshold ($)",
                 value = budgetAlertThreshold,
-                onValueChange = { budgetAlertThreshold = it },
+                onValueChange = { newValue ->
+                    budgetAlertThreshold = newValue
+                    try { RustBridge.setBudgetThreshold(newValue) } catch (_: Exception) {}
+                },
                 helperText = "Receive an alert when spending exceeds this amount",
             )
         }

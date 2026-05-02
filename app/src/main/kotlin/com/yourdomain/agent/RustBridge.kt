@@ -7,4 +7,9 @@ object RustBridge {
     external fun nativeStatus(): String
     external fun nativeGetLogs(count: Int): String
     external fun nativeConfirm(approved: Boolean): String
+
+    // Budget tracker (Phase 6)
+    external fun getMonthlyCost(): String
+    external fun setBudgetThreshold(usd: String): String
+    external fun isOverBudget(): Boolean
 }

@@ -79,6 +79,44 @@ pub mod android {
         });
         outcome.resolve::<jni::errors::ThrowRuntimeExAndDefault>()
     }
+
+    #[unsafe(no_mangle)]
+    pub extern "system" fn Java_com_yourdomain_agent_RustBridge_getMonthlyCost<'local>(
+        mut unowned_env: EnvUnowned<'local>,
+        _class: JClass<'local>,
+    ) -> jstring {
+        let outcome = unowned_env.with_env(|env| -> Result<_, jni::errors::Error> {
+            let cost = crate::budget_tracker::get_tracker().monthly_cost();
+            Ok(env.new_string(&format!("{:.2}", cost))?.into_raw())
+        });
+        outcome.resolve::<jni::errors::ThrowRuntimeExAndDefault>()
+    }
+
+    #[unsafe(no_mangle)]
+    pub extern "system" fn Java_com_yourdomain_agent_RustBridge_setBudgetThreshold<'local>(
+        mut unowned_env: EnvUnowned<'local>,
+        _class: JClass<'local>,
+        usd: jstring,
+    ) -> jstring {
+        let outcome = unowned_env.with_env(|env| -> Result<_, jni::errors::Error> {
+            let input: String = env.get_string(&usd)?.into();
+            if let Ok(val) = input.parse::<f64>() {
+                crate::budget_tracker::get_tracker().set_threshold(val);
+                Ok(env.new_string("ok")?.into_raw())
+            } else {
+                Ok(env.new_string("invalid_number")?.into_raw())
+            }
+        });
+        outcome.resolve::<jni::errors::ThrowRuntimeExAndDefault>()
+    }
+
+    #[unsafe(no_mangle)]
+    pub extern "system" fn Java_com_yourdomain_agent_RustBridge_isOverBudget<'local>(
+        mut unowned_env: EnvUnowned<'local>,
+        _class: JClass<'local>,
+    ) -> jboolean {
+        crate::budget_tracker::get_tracker().is_over_budget() as jboolean
+    }
 }
 
 #[cfg(not(target_os = "android"))]

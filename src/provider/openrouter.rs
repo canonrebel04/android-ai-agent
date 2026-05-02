@@ -1,9 +1,13 @@
 use super::{LlmError, LlmProvider, LlmRequest, LlmResponse, Usage};
+use crate::prompt_cache::{CacheBreakpoint, CacheableProvider, CachedRequest};
 use reqwest::StatusCode;
+use serde_json::json;
 
 pub struct OpenRouterProvider {
     api_key: String,
     base_url: String,
+    /// Enable prompt caching passthrough for Anthropic models via OpenRouter.
+    pub cache_enabled: bool,
 }
 
 impl OpenRouterProvider {
@@ -11,6 +15,7 @@ impl OpenRouterProvider {
         Self {
             api_key,
             base_url: "https://openrouter.ai/api/v1".to_string(),
+            cache_enabled: false,
         }
     }
 }
@@ -94,5 +99,112 @@ impl LlmProvider for OpenRouterProvider {
                 },
             })
         }
+    }
+}
+
+impl CacheableProvider for OpenRouterProvider {
+    fn apply_cache(
+        &self,
+        body: &serde_json::Value,
+        breakpoints: &[CacheBreakpoint],
+    ) -> CachedRequest {
+        if !self.cache_enabled || breakpoints.is_empty() {
+            return CachedRequest::default();
+        }
+
+        let mut body = body.clone();
+        let messages = body
+            .get_mut("messages")
+            .and_then(|m| m.as_array_mut());
+
+        let Some(messages) = messages else {
+            return CachedRequest::default();
+        };
+
+        let mark_cache_on = |msg: &mut serde_json::Value| {
+            if let Some(content) = msg.get_mut("content") {
+                if let Some(arr) = content.as_array_mut() {
+                    for block in arr.iter_mut() {
+                        if let Some(obj) = block.as_object_mut() {
+                            obj.insert(
+                                "cache_control".to_string(),
+                                json!({"type": "ephemeral"}),
+                            );
+                        }
+                    }
+                }
+            }
+        };
+
+        for bp in breakpoints {
+            match bp {
+                CacheBreakpoint::SystemMessages => {
+                    if let Some(first) = messages.first_mut() {
+                        mark_cache_on(first);
+                    }
+                }
+                CacheBreakpoint::LastMessages(n) => {
+                    let len = messages.len();
+                    let start = len.saturating_sub(*n);
+                    for msg in messages.iter_mut().skip(start) {
+                        mark_cache_on(msg);
+                    }
+                }
+                CacheBreakpoint::AtMessage(idx) => {
+                    if *idx < messages.len() {
+                        mark_cache_on(&mut messages[*idx]);
+                    }
+                }
+            }
+        }
+
+        CachedRequest {
+            cache_enabled: true,
+            modified_body: Some(body),
+            extra_headers: vec![(
+                "anthropic-beta".to_string(),
+                "prompt-caching-2024-07-31".to_string(),
+            )],
+        }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use serde_json::json;
+
+    #[test]
+    fn test_openrouter_cache_last_messages() {
+        let provider = OpenRouterProvider {
+            api_key: "test".into(),
+            base_url: "https://test".into(),
+            cache_enabled: true,
+        };
+        let body = json!({
+            "model": "anthropic/claude-sonnet-4",
+            "messages": [
+                {"role": "user", "content": [{"type": "text", "text": "a"}]},
+                {"role": "assistant", "content": [{"type": "text", "text": "b"}]},
+            ]
+        });
+        let result = provider.apply_cache(&body, &[CacheBreakpoint::LastMessages(1)]);
+        assert!(result.cache_enabled);
+        assert!(result
+            .extra_headers
+            .iter()
+            .any(|(k, _v)| k == "anthropic-beta"));
+    }
+
+    #[test]
+    fn test_openrouter_cache_disabled_skips() {
+        let provider = OpenRouterProvider {
+            api_key: "test".into(),
+            base_url: "https://test".into(),
+            cache_enabled: false,
+        };
+        let body = json!({"messages": []});
+        let result = provider.apply_cache(&body, &[CacheBreakpoint::LastMessages(1)]);
+        assert!(!result.cache_enabled);
     }
 }
