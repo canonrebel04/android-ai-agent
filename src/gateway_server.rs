@@ -50,19 +50,19 @@ pub enum AgentMessage {
 
 pub struct GatewayServer {
     addr: SocketAddr,
-    auth_token: Option<String>,
+    _auth_token: Option<String>,
 }
 
 impl GatewayServer {
     pub fn new(port: u16) -> Self {
         Self {
             addr: SocketAddr::from(([127, 0, 0, 1], port)),
-            auth_token: None,
+            _auth_token: None,
         }
     }
 
     pub fn with_auth(mut self, token: String) -> Self {
-        self.auth_token = Some(token);
+        self._auth_token = Some(token);
         self
     }
 
@@ -77,7 +77,7 @@ impl GatewayServer {
         let listener = TcpListener::bind(self.addr).await?;
         println!("Gateway WebSocket server listening on ws://{}", self.addr);
 
-        let auth_token = self.auth_token.clone();
+        let auth_token = self._auth_token.clone();
 
         while let Ok((stream, peer)) = listener.accept().await {
             let token = auth_token.clone();
@@ -94,7 +94,7 @@ impl GatewayServer {
 
 async fn handle_connection(
     stream: TcpStream,
-    auth_token: Option<String>,
+    _auth_token: Option<String>,
 ) -> Result<(), Box<dyn std::error::Error>> {
     let ws_stream = accept_async(stream).await?;
     let (mut write, mut read) = ws_stream.split();
@@ -224,6 +224,6 @@ mod tests {
     #[test]
     fn test_server_new() {
         let server = GatewayServer::new(8765).with_auth("secret".into());
-        assert!(server.auth_token.is_some());
+        assert!(server._auth_token.is_some());
     }
 }
