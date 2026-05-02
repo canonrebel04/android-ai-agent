@@ -1,4 +1,4 @@
-use android_ai_agent::gateway_server::GatewayServer;
+use agent_core::gateway_server::GatewayServer;
 
 #[tokio::main]
 async fn main() {
