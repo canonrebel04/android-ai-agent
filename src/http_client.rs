@@ -11,6 +11,10 @@ impl HttpClient {
                 .expect("failed to build HTTP client"),
         }
     }
+
+    pub fn inner(&self) -> &reqwest::Client {
+        &self.client
+    }
 }
 
 impl Default for HttpClient {
