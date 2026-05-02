@@ -74,11 +74,15 @@ impl LlmProvider for OpenRouterProvider {
             let resp = resp.error_for_status()?;
 
             let json: serde_json::Value = resp.json().await?;
-            let choice = &json["choices"][0]["message"];
+            let choices = json["choices"].as_array()
+                .ok_or_else(|| LlmError::ModelUnavailable("empty response".into()))?;
+            let choice = choices.first()
+                .ok_or_else(|| LlmError::ModelUnavailable("no choices in response".into()))?;
+            let message = &choice["message"];
             let usage = &json["usage"];
 
             Ok(LlmResponse {
-                content: choice["content"].as_str().unwrap_or("").to_string(),
+                content: message["content"].as_str().unwrap_or("").to_string(),
                 model: json["model"]
                     .as_str()
                     .unwrap_or(&request.model)
