@@ -6,3 +6,4 @@ pub mod skill_registry;
 pub mod context_manager;
 pub mod complexity_classifier;
 pub mod events;
+pub mod safety;
