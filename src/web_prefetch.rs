@@ -1,8 +1,9 @@
 //! Web search pre-fetch — searches the web before each LLM call for up-to-date info.
 //!
 //! Supported providers:
-//! - Brave Search API (https://api.search.brave.com/res/v1/web/search)
-//! - SearXNG (self-hosted, http://localhost:8080/search)
+//! - Websurfx (Rust, on-device default — http://localhost:8084)
+//! - SearXNG (self-hosted — http://localhost:8080)
+//! - Brave Search API (cloud — https://api.search.brave.com)
 //!
 //! Features:
 //! - Concurrent search queries (max 3)
@@ -55,16 +56,25 @@ impl Default for WebPrefetchConfig {
 
 #[derive(Debug, Clone)]
 pub enum SearchProvider {
+    /// No provider configured — pre-fetch disabled.
     None,
-    Brave { api_key: String },
+    /// Websurfx — Rust meta-search engine. Default for on-device.
+    /// Runs locally: cargo build --release && ./websurfx
+    /// Endpoint: http://localhost:8084/search?q=
+    Websurfx { base_url: String },
+    /// SearXNG — self-hosted meta-search.
     SearXNG { base_url: String },
+    /// Brave Search API — cloud-based.
+    Brave { api_key: String },
 }
 
 impl SearchProvider {
+    /// Auto-detect from environment variables.
+    /// Priority: WEBSURFX_URL > SEARXNG_URL > BRAVE_API_KEY
     pub fn from_env() -> Self {
-        if let Ok(key) = std::env::var("BRAVE_API_KEY") {
-            if !key.is_empty() {
-                return SearchProvider::Brave { api_key: key };
+        if let Ok(url) = std::env::var("WEBSURFX_URL") {
+            if !url.is_empty() {
+                return SearchProvider::Websurfx { base_url: url };
             }
         }
         if let Ok(url) = std::env::var("SEARXNG_URL") {
@@ -72,7 +82,19 @@ impl SearchProvider {
                 return SearchProvider::SearXNG { base_url: url };
             }
         }
+        if let Ok(key) = std::env::var("BRAVE_API_KEY") {
+            if !key.is_empty() {
+                return SearchProvider::Brave { api_key: key };
+            }
+        }
         SearchProvider::None
+    }
+
+    /// Create a Websurfx provider (on-device default).
+    pub fn websurfx_local(port: u16) -> Self {
+        SearchProvider::Websurfx {
+            base_url: format!("http://localhost:{}", port),
+        }
     }
 }
 
@@ -178,6 +200,9 @@ pub async fn search(
         SearchProvider::SearXNG { base_url } => {
             search_searxng(client, query, base_url, config).await
         }
+        SearchProvider::Websurfx { base_url } => {
+            search_websurfx(client, query, base_url, config).await
+        }
     };
 
     // Cache results
@@ -263,6 +288,54 @@ async fn search_searxng(
             title: truncate(&r.title, config.max_chars_per_result),
             snippet: truncate(&r.content, config.max_chars_per_result),
             url: r.url,
+        })
+        .collect()
+}
+
+/// Search Websurfx (Rust, on-device meta-search engine).
+async fn search_websurfx(
+    client: &Client,
+    query: &str,
+    base_url: &str,
+    config: &WebPrefetchConfig,
+) -> Vec<WebSearchResult> {
+    let url = format!(
+        "{}/search?q={}&format=json",
+        base_url.trim_end_matches('/'),
+        urlencoding(query)
+    );
+
+    let resp = match client
+        .get(&url)
+        .timeout(Duration::from_secs(config.timeout_secs))
+        .send()
+        .await
+    {
+        Ok(r) => r,
+        Err(_) => return Vec::new(),
+    };
+
+    let json: serde_json::Value = match resp.json().await {
+        Ok(j) => j,
+        Err(_) => return Vec::new(),
+    };
+
+    // Websurfx returns { "results": [...] } similar to SearXNG
+    json["results"]
+        .as_array()
+        .unwrap_or(&Vec::new())
+        .iter()
+        .take(config.max_results)
+        .map(|r| WebSearchResult {
+            title: truncate(
+                r["title"].as_str().unwrap_or(""),
+                config.max_chars_per_result,
+            ),
+            snippet: truncate(
+                r["description"].as_str().unwrap_or(""),
+                config.max_chars_per_result,
+            ),
+            url: r["url"].as_str().unwrap_or("").to_string(),
         })
         .collect()
 }
