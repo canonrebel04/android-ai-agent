@@ -3,6 +3,10 @@ name = "android-ai-agent"
 version = "0.1.0"
 edition = "2024"
 
+[lib]
+crate-type = ["lib", "cdylib"]
+name = "agent_core"
+
 [dependencies]
 tokio = { version = "1.52", features = ["full"] }
 reqwest = { version = "0.13", features = ["json", "rustls"] }
@@ -19,3 +23,6 @@ path = "examples/smoke_test.rs"
 [[example]]
 name = "agent_loop_smoke"
 path = "examples/agent_loop_smoke.rs"
+
+[target.'cfg(target_os = "android")'.dependencies]
+jni = { version = "0.22", default-features = false }
