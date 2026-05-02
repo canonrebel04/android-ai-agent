@@ -40,6 +40,12 @@
             android:name=".TelegramBotService"
             android:exported="false" />
 
+        <service
+            android:name=".VoiceService"
+            android:exported="false" />
+
     </application>
+
+    <uses-permission android:name="android.permission.RECORD_AUDIO" />
 
 </manifest>

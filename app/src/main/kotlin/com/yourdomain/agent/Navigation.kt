@@ -8,6 +8,7 @@ import androidx.compose.ui.graphics.vector.ImageVector
 
 enum class Screen(val label: String, val icon: ImageVector) {
     Home("Home", Icons.Default.Home),
+    Voice("Voice", Icons.Default.Mic),
     Models("Models", Icons.Default.Star),
     Skills("Skills", Icons.Default.Build),
     Channels("Channels", Icons.Default.Chat),
@@ -22,7 +23,7 @@ fun AgentNavigation() {
     Scaffold(
         bottomBar = {
             NavigationBar {
-                listOf(Screen.Home, Screen.Models, Screen.Skills, Screen.Channels).forEach { screen ->
+                listOf(Screen.Home, Screen.Voice, Screen.Models, Screen.Skills).forEach { screen ->
                     NavigationBarItem(
                         icon = { Icon(screen.icon, contentDescription = screen.label) },
                         label = { Text(screen.label) },
@@ -37,6 +38,7 @@ fun AgentNavigation() {
         androidx.compose.foundation.layout.Box(modifier = androidx.compose.ui.Modifier.padding(padding)) {
             when (currentScreen) {
                 Screen.Home -> HomeScreen()
+                Screen.Voice -> VoiceScreen()
                 Screen.Models -> ModelsScreen()
                 Screen.Skills -> SkillsScreen()
                 Screen.Channels -> ChannelsScreen()
