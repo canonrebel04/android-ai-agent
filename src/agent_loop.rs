@@ -3,6 +3,8 @@ use crate::complexity_classifier::{self, TaskComplexity};
 use crate::context_manager::ContextManager;
 use crate::events::agent_events::AgentEvent;
 use crate::http_client::HttpClient;
+use crate::memory::deduplicator;
+use crate::memory::fact_store::FactCategory;
 use crate::memory::fact_store::FactStore;
 use crate::memory::pre_fetcher::PreFetcher;
 use crate::model_router::ModelRouter;
@@ -30,6 +32,7 @@ pub struct AgentLoop {
     config: AgentLoopConfig,
     policy_enforcer: SkillPolicyEnforcer,
     events: Vec<AgentEvent>,
+    fact_store: Option<FactStore>,
 }
 
 impl AgentLoop {
@@ -38,7 +41,14 @@ impl AgentLoop {
             config,
             policy_enforcer: SkillPolicyEnforcer::new(),
             events: Vec::new(),
+            fact_store: None,
         }
+    }
+
+    /// Attach a fact_store for automatic memory during the loop.
+    pub fn with_fact_store(mut self, store: FactStore) -> Self {
+        self.fact_store = Some(store);
+        self
     }
 
     /// Run the agent loop.
@@ -100,6 +110,22 @@ impl AgentLoop {
                 tier: complexity,
                 prompt_tokens: response.usage.prompt_tokens,
             });
+
+            // ── Save facts to holographic memory ──
+            if let Some(ref store) = self.fact_store {
+                let entities = crate::memory::fact_index::extract_entities(&response.content);
+                if !entities.is_empty() {
+                    let summary = crate::web_prefetch::truncate(&response.content, 200);
+                    deduplicator::smart_add(
+                        store,
+                        &summary,
+                        FactCategory::General,
+                        &[],
+                        &entities.iter().map(|e| e.as_str()).collect::<Vec<_>>(),
+                        0.5,
+                    );
+                }
+            }
 
             match tool_parser::parse(&response.content) {
                 Ok(action) => {
@@ -232,6 +258,22 @@ impl AgentLoop {
                 tier: complexity,
                 prompt_tokens: response.usage.prompt_tokens,
             });
+
+            // ── Save facts to holographic memory ──
+            if let Some(ref store) = self.fact_store {
+                let entities = crate::memory::fact_index::extract_entities(&response.content);
+                if !entities.is_empty() {
+                    let summary = crate::web_prefetch::truncate(&response.content, 200);
+                    deduplicator::smart_add(
+                        store,
+                        &summary,
+                        FactCategory::General,
+                        &[],
+                        &entities.iter().map(|e| e.as_str()).collect::<Vec<_>>(),
+                        0.5,
+                    );
+                }
+            }
 
             match tool_parser::parse(&response.content) {
                 Ok(action) => {

@@ -49,6 +49,47 @@ impl ContextManager {
         }
     }
 
+    /// Compact old context: summarize messages before the last N turns.
+    /// Keeps system message + last `keep_last` messages intact.
+    pub fn compact(&mut self, keep_last: usize) {
+        if self.messages.len() <= keep_last + 2 {
+            return;
+        }
+
+        // Keep: system message + last keep_last messages
+        let split_idx = self.messages.len().saturating_sub(keep_last);
+
+        // Summarize the middle section
+        let old_msgs: Vec<&str> = self.messages[1..split_idx]
+            .iter()
+            .filter(|m| m.role != "system")
+            .map(|m| m.content.as_str())
+            .collect();
+
+        if old_msgs.is_empty() {
+            return;
+        }
+
+        let summary = format!(
+            "[Earlier conversation summarized ({} messages)]: {}",
+            old_msgs.len(),
+            old_msgs.join(" | ")
+        );
+        let summary = truncate(&summary, 500);
+
+        // Replace old messages with summary
+        let system = self.messages[0].clone();
+        let recent: Vec<Message> = self.messages[split_idx..].to_vec();
+
+        self.messages.clear();
+        self.messages.push(system);
+        self.messages.push(Message {
+            role: "system".to_string(),
+            content: summary,
+        });
+        self.messages.extend(recent);
+    }
+
     pub fn messages(&self) -> &[Message] {
         &self.messages
     }
@@ -60,6 +101,15 @@ impl ContextManager {
     pub fn token_count(&self) -> usize {
         self.estimated_tokens()
     }
+
+    /// Check if context is approaching the token limit.
+    pub fn is_near_limit(&self, ratio: f64) -> bool {
+        self.estimated_tokens() as f64 > self.max_tokens as f64 * ratio
+    }
+}
+
+fn truncate(s: &str, max_chars: usize) -> String {
+    if s.len() <= max_chars { s.to_string() } else { format!("{}...", &s[..max_chars]) }
 }
 
 #[cfg(test)]
