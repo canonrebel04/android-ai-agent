@@ -1,4 +1,4 @@
-package com.yourdomain.agent.service
+package com.yourdomain.agent
 
 import android.accessibilityservice.AccessibilityService
 import android.accessibilityservice.GestureDescription

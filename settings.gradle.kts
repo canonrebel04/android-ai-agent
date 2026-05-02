@@ -1,1 +1,2 @@
-rootProject.name = "android-ai-agent"\ninclude(":kotlin")
+rootProject.name = "android-ai-agent"
+include(":app")

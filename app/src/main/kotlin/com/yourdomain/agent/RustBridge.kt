@@ -1,4 +1,4 @@
-package com.yourdomain.agent.bridge
+package com.yourdomain.agent
 
 object RustBridge {
     init { System.loadLibrary("agent_core") }

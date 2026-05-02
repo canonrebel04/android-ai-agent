@@ -1,4 +1,4 @@
-package com.yourdomain.agent.data
+package com.yourdomain.agent
 
 import android.security.keystore.KeyGenParameterSpec
 import android.security.keystore.KeyProperties
