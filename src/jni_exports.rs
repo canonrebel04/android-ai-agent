@@ -96,7 +96,7 @@ pub mod android {
     pub extern "system" fn Java_com_yourdomain_agent_RustBridge_setBudgetThreshold<'local>(
         mut unowned_env: EnvUnowned<'local>,
         _class: JClass<'local>,
-        usd: jstring,
+        usd: JString<'local>,
     ) -> jstring {
         let outcome = unowned_env.with_env(|env| -> Result<_, jni::errors::Error> {
             let input: String = env.get_string(&usd)?.into();
@@ -112,7 +112,7 @@ pub mod android {
 
     #[unsafe(no_mangle)]
     pub extern "system" fn Java_com_yourdomain_agent_RustBridge_isOverBudget<'local>(
-        mut unowned_env: EnvUnowned<'local>,
+        _unowned_env: EnvUnowned<'local>,
         _class: JClass<'local>,
     ) -> jboolean {
         crate::budget_tracker::get_tracker().is_over_budget() as jboolean
