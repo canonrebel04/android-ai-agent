@@ -11,7 +11,7 @@ data class MessageItem(
     val timestamp: Long = System.currentTimeMillis(),
 )
 
-class MessageQueue(maxSize: Int = 20) {
+class MessageQueue(val maxSize: Int = 20) {
     private val _messages = MutableStateFlow<List<MessageItem>>(emptyList())
     val messages: StateFlow<List<MessageItem>> = _messages.asStateFlow()
 

@@ -1,9 +1,13 @@
 package com.yourdomain.agent
 
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.padding
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
+import androidx.lifecycle.viewmodel.compose.viewModel
+import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.vector.ImageVector
 
 enum class Screen(val label: String, val icon: ImageVector) {
@@ -33,11 +37,14 @@ fun AgentNavigation() {
                 }
             }
         }
-    ) { padding ->
+    ) { innerPadding ->
         // Apply padding to avoid bottom bar overlap
-        androidx.compose.foundation.layout.Box(modifier = androidx.compose.ui.Modifier.padding(padding)) {
+        Box(modifier = Modifier.padding(innerPadding)) {
             when (currentScreen) {
-                Screen.Home -> HomeScreen()
+                Screen.Home -> {
+                    val viewModel = viewModel<AgentViewModel>()
+                    HomeScreen(viewModel = viewModel)
+                }
                 Screen.Voice -> VoiceScreen()
                 Screen.Models -> ModelsScreen()
                 Screen.Skills -> SkillsScreen()
