@@ -19,6 +19,7 @@ tokio-tungstenite = "0.26"
 futures-util = "0.3"
 rusqlite = { version = "0.39.0", features = ["bundled", "functions"] }
 regex = "1.12.3"
+sha2 = "0.11.0"
 
 [[example]]
 name = "smoke_test"

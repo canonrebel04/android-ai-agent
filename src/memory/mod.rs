@@ -8,3 +8,5 @@
 pub mod fact_store;
 pub mod fact_index;
 pub mod injector;
+pub mod deduplicator;
+pub mod compactor;

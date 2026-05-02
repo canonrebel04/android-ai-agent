@@ -14,4 +14,5 @@ pub mod gateway_server;
 pub mod prompt_cache;
 pub mod budget_tracker;
 pub mod memory;
+pub mod soul;
 pub mod jni_exports;
