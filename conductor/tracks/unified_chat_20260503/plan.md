@@ -31,7 +31,7 @@ This plan outlines the steps to implement a unified chat interface and integrate
 - [~] Task: Conductor - User Manual Verification 'Android Chat UI' (Protocol in workflow.md) [203ecf7]
 
 ## Phase 4: Integration & Polish
-- [ ] Task: End-to-end testing of chat flow with live APIs
+- [~] Task: End-to-end testing of chat flow with live APIs
     - [ ] Verify message sending/receiving via JNI
     - [ ] Test multiple LLM providers (Google, Anthropic)
 - [ ] Task: UI polish and accessibility review

@@ -254,7 +254,7 @@ impl LlmProvider for AnthropicProvider {
             if req.temperature > 0.0 { body["temperature"] = json!(req.temperature); }
 
             let url = format!("{}/messages", "https://api.anthropic.com/v1");
-            let mut resp = client.post(&url)
+            let resp = client.post(&url)
                 .header("x-api-key", api_key)
                 .header("anthropic-version", ANTHROPIC_VERSION)
                 .header("Content-Type", "application/json")

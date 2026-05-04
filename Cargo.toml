@@ -21,6 +21,7 @@ rusqlite = { version = "0.39.0", features = ["bundled", "functions"] }
 regex = "1.12.3"
 sha2 = "0.11.0"
 async-stream = "0.3"
+once_cell = "1.19"
 
 [[example]]
 name = "smoke_test"

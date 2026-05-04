@@ -16,9 +16,8 @@ pub mod android {
     ) -> jstring {
         let outcome = unowned_env.with_env(|env| -> Result<_, jni::errors::Error> {
             let key: String = env.get_string(&openrouter_key)?.into();
-            let suffix = if key.len() >= 4 { &key[key.len() - 4..] } else { "????" };
-            let result = format!("init_ok:{}", suffix);
-            Ok(env.new_string(&result)?.into_raw())
+            crate::unified_agent::get_agent().init(key);
+            Ok(env.new_string("Agent initialized").unwrap().into_raw())
         });
         outcome.resolve::<jni::errors::ThrowRuntimeExAndDefault>()
     }
@@ -135,8 +134,11 @@ pub mod android {
                 }
             })?;
 
-            // TODO: Actually process the message through the agent loop
-            let response = format!("Rust received: {}", msg.content);
+            // Execute async process_message on the current thread's runtime
+            let response = tokio::runtime::Handle::current().block_on(async {
+                crate::unified_agent::get_agent().process_message(msg.content).await
+            });
+
             Ok(env.new_string(&response)?.into_raw())
         });
         outcome.resolve::<jni::errors::ThrowRuntimeExAndDefault>()
