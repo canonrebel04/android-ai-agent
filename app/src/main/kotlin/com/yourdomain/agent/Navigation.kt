@@ -10,24 +10,27 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.vector.ImageVector
 
+import com.yourdomain.agent.ui.chat.UnifiedChatScreen
+
 enum class Screen(val label: String, val icon: ImageVector) {
-    Home("Home", Icons.Default.Home),
+    Chat("Chat", Icons.Default.Chat),
+    Home("Logs", Icons.Default.List),
     Voice("Voice", Icons.Default.Mic),
     Models("Models", Icons.Default.Star),
     Skills("Skills", Icons.Default.Build),
-    Channels("Channels", Icons.Default.Chat),
+    Channels("Channels", Icons.Default.Settings),
     Memory("Memory", Icons.Default.Info),
     Settings("Settings", Icons.Default.Settings),
 }
 
 @Composable
 fun AgentNavigation() {
-    var currentScreen by remember { mutableStateOf(Screen.Home) }
+    var currentScreen by remember { mutableStateOf(Screen.Chat) }
 
     Scaffold(
         bottomBar = {
             NavigationBar {
-                listOf(Screen.Home, Screen.Voice, Screen.Models, Screen.Skills).forEach { screen ->
+                listOf(Screen.Chat, Screen.Voice, Screen.Models, Screen.Settings).forEach { screen ->
                     NavigationBarItem(
                         icon = { Icon(screen.icon, contentDescription = screen.label) },
                         label = { Text(screen.label) },
@@ -40,9 +43,19 @@ fun AgentNavigation() {
     ) { innerPadding ->
         // Apply padding to avoid bottom bar overlap
         Box(modifier = Modifier.padding(innerPadding)) {
+            val viewModel = viewModel<AgentViewModel>()
+            val state by viewModel.state.collectAsState()
+
             when (currentScreen) {
+                Screen.Chat -> {
+                    UnifiedChatScreen(
+                        messages = state.chatMessages,
+                        onSendMessage = { viewModel.sendChatMessage(it) },
+                        modelName = state.activeModel,
+                        budgetUsd = state.monthlyCost
+                    )
+                }
                 Screen.Home -> {
-                    val viewModel = viewModel<AgentViewModel>()
                     HomeScreen(viewModel = viewModel)
                 }
                 Screen.Voice -> VoiceScreen()
