@@ -2,7 +2,8 @@ use futures_util::{SinkExt, StreamExt};
 use serde::{Deserialize, Serialize};
 use std::net::SocketAddr;
 use tokio::net::{TcpListener, TcpStream};
-use tokio_tungstenite::accept_async;
+use tokio_tungstenite::accept_hdr_async;
+use tokio_tungstenite::tungstenite::handshake::server::{ErrorResponse, Request, Response};
 use tokio_tungstenite::tungstenite::Message;
 
 /// WebSocket message protocol — client to agent
@@ -96,9 +97,28 @@ impl GatewayServer {
 
 async fn handle_connection(
     stream: TcpStream,
-    _auth_token: Option<String>,
+    auth_token: Option<String>,
 ) -> Result<(), Box<dyn std::error::Error>> {
-    let ws_stream = accept_async(stream).await?;
+    let callback = |req: &Request, response: Response| -> Result<Response, ErrorResponse> {
+        if let Some(expected_token) = &auth_token {
+            let auth_header = req.headers().get("Authorization");
+            let valid = match auth_header {
+                Some(val) => {
+                    let token_str = val.to_str().unwrap_or("");
+                    token_str == format!("Bearer {}", expected_token) || token_str == expected_token.as_str()
+                }
+                None => false,
+            };
+            if !valid {
+                let mut err = Response::builder().status(401).body(Some("Unauthorized".to_string().into())).unwrap();
+                err.headers_mut().insert("Content-Type", "text/plain".parse().unwrap());
+                return Err(err);
+            }
+        }
+        Ok(response)
+    };
+
+    let ws_stream = accept_hdr_async(stream, callback).await?;
     let (mut write, mut read) = ws_stream.split();
 
     // Send initial status

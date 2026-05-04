@@ -192,8 +192,8 @@ mod tests {
     #[test]
     fn test_probe_all_with_fact_store() {
         let store = FactStore::open_in_memory().unwrap();
-        store.add("claude-sonnet-4 costs $3/$15 per 1M", FactCategory::Tool, &["pricing"], &["claude-sonnet-4", "pricing"], 0.9).unwrap();
-        store.add("deepseek-v4 costs $0.14/$0.28 per 1M", FactCategory::Tool, &["pricing"], &["deepseek-v4", "pricing"], 0.85).unwrap();
+        store.add("claude-sonnet-4 costs $3/$15 per 1M", crate::memory::fact_store::FactCategory::Tool, &["pricing"], &["claude-sonnet-4", "pricing"], 0.9).unwrap();
+        store.add("deepseek-v4 costs $0.14/$0.28 per 1M", crate::memory::fact_store::FactCategory::Tool, &["pricing"], &["deepseek-v4", "pricing"], 0.85).unwrap();
 
         let results = probe_all(&store, "What is the pricing of claude-sonnet-4?");
         assert!(!results.is_empty());
