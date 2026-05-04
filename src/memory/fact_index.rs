@@ -2,7 +2,7 @@
 //! Extracts named entities from text using regex patterns,
 //! then indexes them against the fact_store for fast retrieval.
 
-use crate::memory::fact_store::{Fact, FactCategory, FactStore, ProbeResult};
+use crate::memory::fact_store::{Fact, FactStore, ProbeResult};
 use regex::Regex;
 use std::collections::HashSet;
 

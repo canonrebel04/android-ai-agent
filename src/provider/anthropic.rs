@@ -12,6 +12,8 @@ use crate::prompt_cache::{CacheBreakpoint, CacheableProvider, CachedRequest};
 use super::{LlmError, LlmProvider, LlmRequest, LlmResponse, Usage};
 use serde_json::json;
 use std::future::Future;
+use futures_util::{Stream, StreamExt};
+use std::pin::Pin;
 
 const ANTHROPIC_VERSION: &str = "2023-06-01";
 
@@ -216,6 +218,72 @@ impl LlmProvider for AnthropicProvider {
                 },
             })
         }
+    }
+
+    fn call_stream(
+        &self,
+        client: &reqwest::Client,
+        request: &LlmRequest,
+    ) -> Pin<Box<dyn Stream<Item = Result<String, LlmError>> + Send>> {
+        let api_key = self.api_key.clone();
+        let req = request.clone();
+        let client = client.clone();
+
+        Box::pin(async_stream::try_stream! {
+            let mut messages: Vec<serde_json::Value> = Vec::new();
+            for msg in &req.messages {
+                if msg.role == "system" { continue; }
+                messages.push(serde_json::json!({
+                    "role": msg.role,
+                    "content": [{"type": "text", "text": msg.content}]
+                }));
+            }
+
+            let system = req.messages.iter()
+                .find(|m| m.role == "system")
+                .map(|m| m.content.clone());
+
+            let mut body = serde_json::json!({
+                "model": req.model,
+                "max_tokens": req.max_tokens,
+                "messages": messages,
+                "stream": true,
+            });
+
+            if let Some(ref sys) = system { body["system"] = json!(sys); }
+            if req.temperature > 0.0 { body["temperature"] = json!(req.temperature); }
+
+            let url = format!("{}/messages", "https://api.anthropic.com/v1");
+            let mut resp = client.post(&url)
+                .header("x-api-key", api_key)
+                .header("anthropic-version", ANTHROPIC_VERSION)
+                .header("Content-Type", "application/json")
+                .json(&body)
+                .send()
+                .await
+                .map_err(LlmError::Http)?;
+
+            let mut stream = resp.bytes_stream();
+            while let Some(item) = stream.next().await {
+                let chunk = item.map_err(LlmError::Http)?;
+                let text = String::from_utf8_lossy(&chunk);
+                
+                for line in text.lines() {
+                    if line.starts_with("data: ") {
+                        let data = &line[6..];
+                        if let Ok(json) = serde_json::from_str::<serde_json::Value>(data) {
+                            if let Some(type_name) = json["type"].as_str() {
+                                if type_name == "content_block_delta" {
+                                    if let Some(delta_text) = json["delta"]["text"].as_str() {
+                                        yield delta_text.to_string();
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        })
     }
 }
 

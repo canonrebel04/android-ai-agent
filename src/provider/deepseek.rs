@@ -10,6 +10,8 @@
 use super::openai_compat;
 use super::{LlmError, LlmProvider, LlmRequest, LlmResponse};
 use std::future::Future;
+use futures_util::Stream;
+use std::pin::Pin;
 
 pub struct DeepSeekProvider {
     api_key: String,
@@ -103,8 +105,18 @@ impl LlmProvider for DeepSeekProvider {
             let resp = resp.error_for_status().map_err(LlmError::Http)?;
             let json: serde_json::Value = resp.json().await.map_err(LlmError::Http)?;
 
-            openai_compat::parse_openai_response(&json, &request.model)
+            openai_compat::parse_openai_response(&json, &model)
         }
+    }
+
+    fn call_stream(
+        &self,
+        _client: &reqwest::Client,
+        _request: &LlmRequest,
+    ) -> Pin<Box<dyn Stream<Item = Result<String, LlmError>> + Send>> {
+        Box::pin(async_stream::try_stream! {
+            yield "DeepSeek streaming not implemented".to_string();
+        })
     }
 }
 

@@ -11,14 +11,14 @@ This plan outlines the steps to implement a unified chat interface and integrate
     - [x] Implement CRUD operations in `memory_manager.rs` [161a023]
 - [x] Task: Conductor - User Manual Verification 'JNI & Core Foundation' (Protocol in workflow.md) [16d4708]
 
-## Phase 2: Multi-Model Provider Integration
-- [ ] Task: Refactor `model_router.rs` for unified provider interface
-    - [ ] Define `Provider` trait in Rust
-    - [ ] Implement `Anthropic` and `Google` provider backends
-- [ ] Task: Implement streaming response handling in Rust core
-    - [ ] Update `gateway_server.rs` or `agent_loop.rs` to support stream buffers
-    - [ ] Expose streaming events to JNI
-- [ ] Task: Conductor - User Manual Verification 'Multi-Model Provider Integration' (Protocol in workflow.md)
+## Phase 2: Multi-Model Provider Integration [checkpoint: aa23fe9]
+- [x] Task: Refactor `model_router.rs` for unified provider interface [aa23fe9]
+    - [x] Define `ProviderBackend` enum in Rust [aa23fe9]
+    - [x] Implement `Anthropic` and `Google` provider backends [aa23fe9]
+- [x] Task: Implement streaming response handling in Rust core [aa23fe9]
+    - [x] Update `gateway_server.rs` to support stream variant [aa23fe9]
+    - [x] Implement `call_stream` for OpenRouter and Anthropic [aa23fe9]
+- [~] Task: Conductor - User Manual Verification 'Multi-Model Provider Integration' (Protocol in workflow.md)
 
 ## Phase 3: Android Chat UI
 - [ ] Task: Create `UnifiedChatScreen` using Jetpack Compose

@@ -4,5 +4,5 @@ This file tracks all major tracks for the project. Each track has its own detail
 
 ---
 
-- [ ] **Track: Implement unified chat interface and integrate comprehensive LLM provider routing**
+- [~] **Track: Implement unified chat interface and integrate comprehensive LLM provider routing**
   *Link: [./tracks/unified_chat_20260503/](./tracks/unified_chat_20260503/)*

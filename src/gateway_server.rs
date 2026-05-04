@@ -41,6 +41,8 @@ pub enum AgentMessage {
     },
     #[serde(rename = "error")]
     Error { message: String },
+    #[serde(rename = "stream")]
+    Stream { text: String, model: String },
     #[serde(rename = "status")]
     Status {
         state: String,

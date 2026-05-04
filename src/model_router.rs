@@ -1,7 +1,7 @@
 use crate::complexity_classifier::{self, TaskComplexity};
 use crate::http_client::HttpClient;
-use crate::prompt_cache::{CacheBreakpoint, CacheableProvider, CachedRequest};
-use crate::provider::{LlmError, LlmProvider, LlmRequest, LlmResponse, Message};
+use crate::prompt_cache::{CacheBreakpoint, CachedRequest};
+use crate::provider::{LlmError, LlmRequest, LlmResponse, Message, ProviderBackend};
 
 #[derive(Debug, Clone)]
 pub struct ModelTier {
@@ -73,10 +73,10 @@ impl ModelRouter {
             .unwrap_or_else(|| &self.tiers[0])
     }
 
-    pub async fn call_with_fallback<P: LlmProvider>(
+    pub async fn call_with_fallback(
         &self,
         client: &HttpClient,
-        provider: &P,
+        backend: &ProviderBackend,
         prompt: &str,
         system_prompt: &str,
     ) -> Result<LlmResponse, LlmError> {
@@ -105,7 +105,7 @@ impl ModelRouter {
                 temperature: tier.temperature,
             };
 
-            match provider.call(client.inner(), &request).await {
+            match backend.call(client.inner(), &request).await {
                 Ok(response) => return Ok(response),
                 Err(LlmError::RateLimit(_)) | Err(LlmError::ModelUnavailable(_)) => {
                     last_error = Some(LlmError::AllFallbacksExhausted);
@@ -120,10 +120,10 @@ impl ModelRouter {
 
     /// Like call_with_fallback but applies prompt caching breakpoints.
     /// Requires the provider to implement CacheableProvider (Anthropic/OpenRouter).
-    pub async fn call_with_fallback_cached<P: LlmProvider + CacheableProvider>(
+    pub async fn call_with_fallback_cached(
         &self,
         client: &HttpClient,
-        provider: &P,
+        backend: &ProviderBackend,
         prompt: &str,
         system_prompt: &str,
         cache_breakpoints: &[CacheBreakpoint],
@@ -165,10 +165,10 @@ impl ModelRouter {
             });
 
             // Apply cache breakpoints
-            let cached = provider.apply_cache(&body, cache_breakpoints);
+            let cached = backend.apply_cache(&body, cache_breakpoints);
 
             // Build headers
-            let (auth_name, auth_value) = provider.auth_header();
+            let (auth_name, auth_value) = backend.auth_header();
             let mut headers: Vec<(String, String)> = vec![
                 ("Content-Type".to_string(), "application/json".to_string()),
                 (auth_name.to_string(), auth_value.to_string()),
@@ -176,7 +176,7 @@ impl ModelRouter {
             headers.extend(cached.extra_headers.clone());
 
             // Send request through http_client with cache support
-            let url = format!("{}/chat/completions", provider.base_url());
+            let url = format!("{}/chat/completions", backend.base_url());
             match client.send_cached(
                 url,
                 headers,

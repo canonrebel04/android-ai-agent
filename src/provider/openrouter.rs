@@ -2,6 +2,8 @@ use super::{LlmError, LlmProvider, LlmRequest, LlmResponse, Usage};
 use crate::prompt_cache::{CacheBreakpoint, CacheableProvider, CachedRequest};
 use reqwest::StatusCode;
 use serde_json::json;
+use futures_util::{Stream, StreamExt};
+use std::pin::Pin;
 
 pub struct OpenRouterProvider {
     api_key: String,
@@ -99,6 +101,59 @@ impl LlmProvider for OpenRouterProvider {
                 },
             })
         }
+    }
+
+    fn call_stream(
+        &self,
+        client: &reqwest::Client,
+        request: &LlmRequest,
+    ) -> Pin<Box<dyn Stream<Item = Result<String, LlmError>> + Send>> {
+        let api_key = self.api_key.clone();
+        let base_url = self.base_url.clone();
+        let request = request.clone();
+        let client = client.clone();
+
+        Box::pin(async_stream::try_stream! {
+            let body = serde_json::json!({
+                "model": request.model,
+                "messages": request.messages.iter().map(|m| {
+                    serde_json::json!({"role": m.role, "content": m.content})
+                }).collect::<Vec<_>>(),
+                "max_tokens": request.max_tokens,
+                "temperature": request.temperature,
+                "stream": true,
+            });
+
+            let resp = client
+                .post(format!("{}/chat/completions", base_url))
+                .header("Authorization", format!("Bearer {}", api_key))
+                .header("HTTP-Referer", "http://localhost")
+                .header("X-Title", "Android AI Agent")
+                .json(&body)
+                .send()
+                .await
+                .map_err(LlmError::Http)?;
+
+            let mut stream = resp.bytes_stream();
+            while let Some(item) = stream.next().await {
+                let chunk = item.map_err(LlmError::Http)?;
+                let text = String::from_utf8_lossy(&chunk);
+                
+                for line in text.lines() {
+                    if line.starts_with("data: ") {
+                        let data = &line[6..];
+                        if data == "[DONE]" {
+                            break;
+                        }
+                        if let Ok(json) = serde_json::from_str::<serde_json::Value>(data) {
+                            if let Some(content) = json["choices"][0]["delta"]["content"].as_str() {
+                                yield content.to_string();
+                            }
+                        }
+                    }
+                }
+            }
+        })
     }
 }
 

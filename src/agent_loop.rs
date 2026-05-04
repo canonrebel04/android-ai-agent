@@ -8,8 +8,7 @@ use crate::memory::fact_store::FactCategory;
 use crate::memory::fact_store::FactStore;
 use crate::memory::pre_fetcher::PreFetcher;
 use crate::model_router::ModelRouter;
-use crate::provider::{LlmError, LlmProvider};
-use crate::prompt_cache::CacheableProvider;
+use crate::provider::{LlmError, ProviderBackend};
 use crate::safety::policy_enforcer::{PolicyDecision, SkillPolicyEnforcer};
 use crate::tool_parser;
 
@@ -54,10 +53,10 @@ impl AgentLoop {
     /// Run the agent loop.
     /// Uses prompt caching when `config.cache_enabled` is true and the provider
     /// also implements `CacheableProvider`.
-    pub async fn run<P: LlmProvider>(
+    pub async fn run(
         &mut self,
         http: &HttpClient,
-        provider: &P,
+        backend: &ProviderBackend,
         router: &ModelRouter,
         ctx: &mut ContextManager,
         prompt: &str,
@@ -94,7 +93,7 @@ impl AgentLoop {
             }
 
             let response = router
-                .call_with_fallback(http, provider, prompt, system_prompt)
+                .call_with_fallback(http, backend, prompt, system_prompt)
                 .await?;
 
             // ── Record token usage to budget tracker ──
@@ -196,10 +195,10 @@ impl AgentLoop {
     /// Run with prompt caching enabled.
     /// Requires a provider that implements both LlmProvider and CacheableProvider
     /// (OpenRouterProvider and AnthropicProvider).
-    pub async fn run_cached<P: LlmProvider + CacheableProvider>(
+    pub async fn run_cached(
         &mut self,
         http: &HttpClient,
-        provider: &P,
+        backend: &ProviderBackend,
         router: &ModelRouter,
         ctx: &mut ContextManager,
         prompt: &str,
@@ -239,7 +238,7 @@ impl AgentLoop {
             let (response, _cached) = router
                 .call_with_fallback_cached(
                     http,
-                    provider,
+                    backend,
                     prompt,
                     system_prompt,
                     &cache_breakpoints,
@@ -326,10 +325,10 @@ impl AgentLoop {
 
     /// Full pipeline: pre-fetch (web + memory) → inject → run.
     /// This is the primary entry point for production use.
-    pub async fn run_with_prefetch<P: LlmProvider>(
+    pub async fn run_with_prefetch(
         &mut self,
         http: &HttpClient,
-        provider: &P,
+        backend: &ProviderBackend,
         router: &ModelRouter,
         ctx: &mut ContextManager,
         prompt: &str,
@@ -349,7 +348,7 @@ impl AgentLoop {
         };
 
         // Run the standard agent loop with augmented prompt
-        self.run(http, provider, router, ctx, prompt, &augmented_prompt)
+        self.run(http, backend, router, ctx, prompt, &augmented_prompt)
             .await
     }
 }
