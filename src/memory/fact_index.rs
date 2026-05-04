@@ -160,6 +160,7 @@ pub fn search_with_entities(
 
 #[cfg(test)]
 mod tests {
+    use crate::memory::fact_store::FactCategory;
     use super::*;
 
     #[test]

@@ -39,13 +39,32 @@ impl ContextManager {
     }
 
     fn trim(&mut self) {
-        while self.messages.len() > 1 && self.estimated_tokens() > self.max_tokens {
-            let remove_idx = if self.messages[0].role == "system" { 1 } else { 0 };
-            if remove_idx < self.messages.len() {
-                self.messages.remove(remove_idx);
+        // Bolt ⚡ Optimization: O(N) context trimming
+        // We avoid calling Vec::remove() in a loop, which was O(N^2),
+        // and instead track `total_chars` in a single pass before a final Vec::drain().
+        let mut total_chars: usize = self.messages.iter()
+            .map(|m| m.role.len() + m.content.len())
+            .sum();
+
+        let has_system = self.messages.first().is_some_and(|m| m.role == "system");
+        let start_idx = if has_system { 1 } else { 0 };
+
+        let mut remove_end = start_idx;
+
+        while self.messages.len() - (remove_end - start_idx) > 1
+            && (total_chars / self.chars_per_token) > self.max_tokens
+        {
+            if remove_end < self.messages.len() {
+                let m = &self.messages[remove_end];
+                total_chars -= m.role.len() + m.content.len();
+                remove_end += 1;
             } else {
                 break;
             }
+        }
+
+        if remove_end > start_idx {
+            self.messages.drain(start_idx..remove_end);
         }
     }
 

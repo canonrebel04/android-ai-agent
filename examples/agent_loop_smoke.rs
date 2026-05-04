@@ -24,7 +24,7 @@ async fn main() {
         max_steps: 3,
         ..Default::default()
     });
-    match agent.run(&http, &provider, &router, &mut ctx, prompt, &system_prompt).await {
+    match agent.run(&http, &agent_core::provider::ProviderBackend::OpenRouter(provider), &router, &mut ctx, prompt, &system_prompt).await {
         Ok(result) => {
             println!("Agent completed: {}", result);
             println!("\nEvent log:");
