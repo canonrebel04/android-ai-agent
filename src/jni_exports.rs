@@ -117,6 +117,51 @@ pub mod android {
     ) -> jboolean {
         crate::budget_tracker::get_tracker().is_over_budget() as jboolean
     }
+
+    // Unified Chat (Phase 1)
+
+    #[unsafe(no_mangle)]
+    pub extern "system" fn Java_com_yourdomain_agent_RustBridge_sendMessage<'local>(
+        mut unowned_env: EnvUnowned<'local>,
+        _class: JClass<'local>,
+        json: JString<'local>,
+    ) -> jstring {
+        let outcome = unowned_env.with_env(|env| -> Result<_, jni::errors::Error> {
+            let input: String = env.get_string(&json)?.into();
+            let msg: crate::chat_models::ChatMessage = serde_json::from_str(&input).map_err(|e| {
+                jni::errors::Error::JavaException {
+                    class: "java/lang/IllegalArgumentException".to_string(),
+                    msg: format!("Invalid JSON: {}", e),
+                }
+            })?;
+
+            // TODO: Actually process the message through the agent loop
+            let response = format!("Rust received: {}", msg.content);
+            Ok(env.new_string(&response)?.into_raw())
+        });
+        outcome.resolve::<jni::errors::ThrowRuntimeExAndDefault>()
+    }
+
+    #[unsafe(no_mangle)]
+    pub extern "system" fn Java_com_yourdomain_agent_RustBridge_getHistory<'local>(
+        mut unowned_env: EnvUnowned<'local>,
+        _class: JClass<'local>,
+    ) -> jstring {
+        let outcome = unowned_env.with_env(|env| -> Result<_, jni::errors::Error> {
+            // TODO: Fetch real history from memory_manager
+            let dummy_history = vec![
+                crate::chat_models::ChatMessage {
+                    id: "0".to_string(),
+                    role: "system".to_string(),
+                    content: "Welcome to Unified Chat".to_string(),
+                    timestamp: 0,
+                }
+            ];
+            let json = serde_json::to_string(&dummy_history).unwrap();
+            Ok(env.new_string(&json)?.into_raw())
+        });
+        outcome.resolve::<jni::errors::ThrowRuntimeExAndDefault>()
+    }
 }
 
 #[cfg(not(target_os = "android"))]

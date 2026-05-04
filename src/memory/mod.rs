@@ -6,6 +6,7 @@
 //!   injector.rs    — Assemble facts + web results into compact XML for prompt injection
 
 pub mod fact_store;
+pub mod chat_store;
 pub mod fact_index;
 pub mod injector;
 pub mod deduplicator;

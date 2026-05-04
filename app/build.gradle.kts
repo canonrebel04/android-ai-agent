@@ -7,8 +7,8 @@ plugins {
 
 android {
     namespace = "com.yourdomain.agent"
-    compileSdk = 37
-    buildToolsVersion = "37.0.0"
+    compileSdk = 34
+    buildToolsVersion = "34.0.0"
 
     signingConfigs {
         create("release") {
@@ -27,7 +27,7 @@ android {
     defaultConfig {
         applicationId = "com.yourdomain.agent"
         minSdk = 26
-        targetSdk = 37
+        targetSdk = 34
         versionCode = 1
         versionName = "0.1.0"
     }

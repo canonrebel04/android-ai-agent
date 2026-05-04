@@ -1,42 +1,38 @@
+use crate::memory::chat_store::ChatStore;
 use std::fs;
 use std::io;
 use std::path::PathBuf;
 
-/// Manages persistent memory stored in a MEMORY.md file.
-///
-/// The file is structured as:
-/// ```markdown
-/// # Memory
-///
-/// ## Persistent Facts
-/// <facts>
-///
-/// ## Recent Context
-/// <tasks>
-/// ```
+/// Manages persistent memory stored in a MEMORY.md file and SQLite databases.
 pub struct MemoryManager {
     path: PathBuf,
 }
 
 impl MemoryManager {
-    /// Returns the default path for the MEMORY.md file.
-    ///
-    /// On Android, uses `$EXTERNAL_STORAGE/.agent/MEMORY.md`.
-    /// Otherwise, uses `~/.agent/MEMORY.md`.
-    pub fn default_path() -> PathBuf {
+    /// Returns the default path for the .agent directory.
+    pub fn agent_dir() -> PathBuf {
         #[cfg(target_os = "android")]
         {
             if let Ok(dir) = std::env::var("EXTERNAL_STORAGE") {
-                return PathBuf::from(dir).join(".agent").join("MEMORY.md");
+                return PathBuf::from(dir).join(".agent");
             }
-            // Fallback on Android: use /sdcard
-            PathBuf::from("/sdcard/.agent/MEMORY.md")
+            PathBuf::from("/sdcard/.agent")
         }
         #[cfg(not(target_os = "android"))]
         {
-            let home = dirs_fallback();
-            home.join(".agent").join("MEMORY.md")
+            dirs_fallback().join(".agent")
         }
+    }
+
+    /// Returns the default path for the MEMORY.md file.
+    pub fn default_path() -> PathBuf {
+        Self::agent_dir().join("MEMORY.md")
+    }
+
+    /// Open the chat history store.
+    pub fn chat_store(&self) -> ChatStore {
+        let path = Self::agent_dir().join("chat_history.db");
+        ChatStore::open(path).expect("failed to open chat store")
     }
 
     /// Creates a new `MemoryManager` with the default path.

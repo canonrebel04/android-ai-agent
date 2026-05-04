@@ -8,6 +8,10 @@ object RustBridge {
     external fun nativeGetLogs(count: Int): String
     external fun nativeConfirm(approved: Boolean): String
 
+    // Unified Chat (Phase 1)
+    external fun sendMessage(json: String): String
+    external fun getHistory(): String
+
     // Budget tracker (Phase 6)
     external fun getMonthlyCost(): String
     external fun setBudgetThreshold(usd: String): String

@@ -1,3 +1,4 @@
+pub mod chat_models;
 pub mod http_client;
 pub mod provider;
 pub mod tool_parser;
