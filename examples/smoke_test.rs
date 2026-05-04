@@ -16,7 +16,7 @@ async fn main() {
     let complexity = complexity_classifier::classify(prompt);
     println!("Complexity: {:?}", complexity);
     println!("Sending prompt: {}", prompt);
-    match router.call_with_fallback(&http, &provider, prompt, "You are a helpful assistant.").await {
+    match router.call_with_fallback(&http, &agent_core::provider::ProviderBackend::OpenRouter(provider), prompt, "You are a helpful assistant.").await {
         Ok(response) => {
             println!("Model: {}", response.model);
             println!("Response: {}", response.content);
