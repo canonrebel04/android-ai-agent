@@ -174,11 +174,17 @@ async fn search_direct(
 
 // Direct search implementations for batch mode (no caching).
 
+use once_cell::sync::Lazy;
+
+static URL_RE: Lazy<regex::Regex> = Lazy::new(|| regex::Regex::new(r"https?://\S+").unwrap());
+static TITLE_RE: Lazy<regex::Regex> = Lazy::new(|| regex::Regex::new(r"<title[^>]*>(.*?)</title>").unwrap());
+static HTML_TAG_RE: Lazy<regex::Regex> = Lazy::new(|| regex::Regex::new(r"<[^>]*>").unwrap());
+static WHITESPACE_RE: Lazy<regex::Regex> = Lazy::new(|| regex::Regex::new(r"\s+").unwrap());
+
 /// Extract URLs from text using regex.
 fn extract_urls(text: &str) -> Vec<String> {
     // Match http:// or https:// followed by non-whitespace chars
-    let re = regex::Regex::new(r"https?://\S+").unwrap();
-    re.find_iter(text)
+    URL_RE.find_iter(text)
         .map(|m| {
             m.as_str()
                 .trim_end_matches(&['.', ',', ')', ']', '}', '"', '\''][..])
@@ -225,17 +231,14 @@ async fn fetch_url_previews(client: &Client, urls: &[String]) -> Vec<WebSnippet>
 }
 
 fn extract_html_title(html: &str) -> Option<String> {
-    let re = regex::Regex::new(r"<title[^>]*>(.*?)</title>").unwrap();
-    re.captures(html)
+    TITLE_RE.captures(html)
         .and_then(|c| c.get(1))
         .map(|m| m.as_str().trim().to_string())
 }
 
 fn strip_html_tags(html: &str) -> String {
-    let re = regex::Regex::new(r"<[^>]*>").unwrap();
-    let stripped = re.replace_all(html, " ");
-    let re_ws = regex::Regex::new(r"\s+").unwrap();
-    re_ws.replace_all(&stripped, " ").trim().to_string()
+    let stripped = HTML_TAG_RE.replace_all(html, " ");
+    WHITESPACE_RE.replace_all(&stripped, " ").trim().to_string()
 }
 
 fn truncate_url_preview(text: &str, max_chars: usize) -> String {
