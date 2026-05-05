@@ -8,11 +8,11 @@
 //! Also implements CacheableProvider for prompt caching support.
 //! Model auto-mapping: unsupported model names fall back to claude-sonnet-4-20250514.
 
-use crate::prompt_cache::{CacheBreakpoint, CacheableProvider, CachedRequest};
 use super::{LlmError, LlmProvider, LlmRequest, LlmResponse, Usage};
+use crate::prompt_cache::{CacheBreakpoint, CacheableProvider, CachedRequest};
+use futures_util::{Stream, StreamExt};
 use serde_json::json;
 use std::future::Future;
-use futures_util::{Stream, StreamExt};
 use std::pin::Pin;
 
 const ANTHROPIC_VERSION: &str = "2023-06-01";
@@ -43,9 +43,7 @@ impl CacheableProvider for AnthropicProvider {
         }
 
         let mut body = body.clone();
-        let messages = body
-            .get_mut("messages")
-            .and_then(|m| m.as_array_mut());
+        let messages = body.get_mut("messages").and_then(|m| m.as_array_mut());
 
         let Some(messages) = messages else {
             return CachedRequest::default();
@@ -56,10 +54,7 @@ impl CacheableProvider for AnthropicProvider {
                 if let Some(arr) = content.as_array_mut() {
                     for block in arr.iter_mut() {
                         if let Some(obj) = block.as_object_mut() {
-                            obj.insert(
-                                "cache_control".to_string(),
-                                json!({"type": "ephemeral"}),
-                            );
+                            obj.insert("cache_control".to_string(), json!({"type": "ephemeral"}));
                         }
                     }
                 }
@@ -138,7 +133,9 @@ impl LlmProvider for AnthropicProvider {
             }
 
             // Find system message
-            let system = req.messages.iter()
+            let system = req
+                .messages
+                .iter()
                 .find(|m| m.role == "system")
                 .map(|m| m.content.clone());
 
@@ -159,12 +156,18 @@ impl LlmProvider for AnthropicProvider {
             // Apply caching if enabled
             let mut headers = vec![
                 ("x-api-key".to_string(), api_key.clone()),
-                ("anthropic-version".to_string(), ANTHROPIC_VERSION.to_string()),
+                (
+                    "anthropic-version".to_string(),
+                    ANTHROPIC_VERSION.to_string(),
+                ),
                 ("Content-Type".to_string(), "application/json".to_string()),
             ];
 
             if cache_enabled {
-                headers.push(("anthropic-beta".to_string(), "prompt-caching-2024-07-31".to_string()));
+                headers.push((
+                    "anthropic-beta".to_string(),
+                    "prompt-caching-2024-07-31".to_string(),
+                ));
 
                 // Add cache_control markers to the last 4 messages
                 if let Some(arr) = body["messages"].as_array_mut() {
@@ -175,7 +178,10 @@ impl LlmProvider for AnthropicProvider {
                             if let Some(blocks) = content.as_array_mut() {
                                 for block in blocks.iter_mut() {
                                     if let Some(obj) = block.as_object_mut() {
-                                        obj.insert("cache_control".to_string(), json!({"type": "ephemeral"}));
+                                        obj.insert(
+                                            "cache_control".to_string(),
+                                            json!({"type": "ephemeral"}),
+                                        );
                                     }
                                 }
                             }
@@ -184,7 +190,10 @@ impl LlmProvider for AnthropicProvider {
                 }
             }
 
-            let url = format!("{}/messages", AnthropicProvider::new(api_key.clone()).base_url());
+            let url = format!(
+                "{}/messages",
+                AnthropicProvider::new(api_key.clone()).base_url()
+            );
 
             let mut req_builder = client.post(&url).json(&body);
             for (k, v) in &headers {
@@ -196,10 +205,12 @@ impl LlmProvider for AnthropicProvider {
             let json: serde_json::Value = resp.json().await.map_err(LlmError::Http)?;
 
             // Parse Anthropic response
-            let content_blocks = json["content"].as_array()
+            let content_blocks = json["content"]
+                .as_array()
                 .ok_or_else(|| LlmError::ModelUnavailable("no content in response".into()))?;
 
-            let text: String = content_blocks.iter()
+            let text: String = content_blocks
+                .iter()
                 .filter_map(|block| block["text"].as_str())
                 .collect::<Vec<_>>()
                 .join("\n");
@@ -214,7 +225,8 @@ impl LlmProvider for AnthropicProvider {
                     prompt_tokens: usage_json["input_tokens"].as_u64().unwrap_or(0) as u32,
                     completion_tokens: usage_json["output_tokens"].as_u64().unwrap_or(0) as u32,
                     total_tokens: (usage_json["input_tokens"].as_u64().unwrap_or(0)
-                        + usage_json["output_tokens"].as_u64().unwrap_or(0)) as u32,
+                        + usage_json["output_tokens"].as_u64().unwrap_or(0))
+                        as u32,
                 },
             })
         }
@@ -267,7 +279,7 @@ impl LlmProvider for AnthropicProvider {
             while let Some(item) = stream.next().await {
                 let chunk = item.map_err(LlmError::Http)?;
                 let text = String::from_utf8_lossy(&chunk);
-                
+
                 for line in text.lines() {
                     if line.starts_with("data: ") {
                         let data = &line[6..];
@@ -337,7 +349,8 @@ mod tests {
             api_key: "test".into(),
             cache_enabled: true,
         };
-        let body = json!({"messages": [{"role": "user", "content": [{"type": "text", "text": "hi"}]}]});
+        let body =
+            json!({"messages": [{"role": "user", "content": [{"type": "text", "text": "hi"}]}]});
         let result = provider.apply_cache(&body, &[]);
         assert!(!result.cache_enabled);
     }

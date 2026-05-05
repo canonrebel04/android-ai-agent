@@ -9,8 +9,8 @@
 
 use super::openai_compat;
 use super::{LlmError, LlmProvider, LlmRequest, LlmResponse};
-use std::future::Future;
 use futures_util::Stream;
+use std::future::Future;
 use std::pin::Pin;
 
 pub struct DeepSeekProvider {

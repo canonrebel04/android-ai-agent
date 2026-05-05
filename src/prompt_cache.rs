@@ -39,7 +39,10 @@ pub trait CacheableProvider {
 }
 
 /// Decide which cache breakpoints to use for a given tier.
-pub fn default_breakpoints(cache_system: bool, cache_recent: Option<usize>) -> Vec<CacheBreakpoint> {
+pub fn default_breakpoints(
+    cache_system: bool,
+    cache_recent: Option<usize>,
+) -> Vec<CacheBreakpoint> {
     let mut bp = Vec::new();
     if cache_system {
         bp.push(CacheBreakpoint::SystemMessages);

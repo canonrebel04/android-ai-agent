@@ -36,10 +36,7 @@ pub enum AgentMessage {
     #[serde(rename = "done")]
     Done { summary: String },
     #[serde(rename = "confirm_required")]
-    ConfirmRequired {
-        skill: String,
-        reason: String,
-    },
+    ConfirmRequired { skill: String, reason: String },
     #[serde(rename = "error")]
     Error { message: String },
     #[serde(rename = "stream")]
@@ -105,13 +102,18 @@ async fn handle_connection(
             let valid = match auth_header {
                 Some(val) => {
                     let token_str = val.to_str().unwrap_or("");
-                    token_str == format!("Bearer {}", expected_token) || token_str == expected_token.as_str()
+                    token_str == format!("Bearer {}", expected_token)
+                        || token_str == expected_token.as_str()
                 }
                 None => false,
             };
             if !valid {
-                let mut err = Response::builder().status(401).body(Some("Unauthorized".to_string().into())).unwrap();
-                err.headers_mut().insert("Content-Type", "text/plain".parse().unwrap());
+                let mut err = Response::builder()
+                    .status(401)
+                    .body(Some("Unauthorized".to_string().into()))
+                    .unwrap();
+                err.headers_mut()
+                    .insert("Content-Type", "text/plain".parse().unwrap());
                 return Err(err);
             }
         }
@@ -175,7 +177,10 @@ async fn handle_connection(
                     write
                         .send(Message::Text(
                             serde_json::to_string(&AgentMessage::Log {
-                                text: format!("Confirmation: {}", if approved { "approved" } else { "rejected" }),
+                                text: format!(
+                                    "Confirmation: {}",
+                                    if approved { "approved" } else { "rejected" }
+                                ),
                             })?
                             .into(),
                         ))

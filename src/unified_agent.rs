@@ -6,10 +6,10 @@ use crate::context_manager::ContextManager;
 use crate::http_client::HttpClient;
 use crate::memory_manager::MemoryManager;
 use crate::model_router::ModelRouter;
-use crate::provider::{ProviderBackend, openrouter::OpenRouterProvider};
+use crate::provider::{openrouter::OpenRouterProvider, ProviderBackend};
 use crate::soul::SoulSystem;
-use std::sync::Mutex;
 use once_cell::sync::Lazy;
+use std::sync::Mutex;
 
 pub struct UnifiedAgent {
     pub agent_loop: Mutex<AgentLoop>,
@@ -40,7 +40,9 @@ pub fn get_agent() -> &'static UnifiedAgent {
 impl UnifiedAgent {
     pub fn init(&self, openrouter_key: String) {
         let mut p = self.provider.lock().unwrap();
-        *p = Some(ProviderBackend::OpenRouter(OpenRouterProvider::new(openrouter_key)));
+        *p = Some(ProviderBackend::OpenRouter(OpenRouterProvider::new(
+            openrouter_key,
+        )));
     }
 
     pub async fn process_message(&self, text: String) -> String {
@@ -58,18 +60,21 @@ impl UnifiedAgent {
             None
         );
 
-        match loop_guard.run(
-            &self.http,
-            backend,
-            &self.router,
-            &mut ctx_guard,
-            &text,
-            &bootstrap.system_prompt
-        ).await {
+        match loop_guard
+            .run(
+                &self.http,
+                backend,
+                &self.router,
+                &mut ctx_guard,
+                &text,
+                &bootstrap.system_prompt,
+            )
+            .await
+        {
             Ok(response) => {
                 self.soul.mark_first_turn_done();
                 response
-            },
+            }
             Err(e) => format!("Error: {:?}", e),
         }
     }

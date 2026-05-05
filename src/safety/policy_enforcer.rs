@@ -15,32 +15,46 @@ pub struct SkillPolicyEnforcer {
 
 impl SkillPolicyEnforcer {
     pub fn new() -> Self {
-        let confirmation_required: HashSet<String> = [
-            "send_message", "phone_call", "delete", "payment",
-        ].iter().map(|s| s.to_string()).collect();
+        let confirmation_required: HashSet<String> =
+            ["send_message", "phone_call", "delete", "payment"]
+                .iter()
+                .map(|s| s.to_string())
+                .collect();
 
-        let critical_skills: HashSet<String> = [
-            "send_message", "phone_call", "payment", "shell_cmd",
-        ].iter().map(|s| s.to_string()).collect();
+        let critical_skills: HashSet<String> =
+            ["send_message", "phone_call", "payment", "shell_cmd"]
+                .iter()
+                .map(|s| s.to_string())
+                .collect();
 
-        Self { confirmation_required, critical_skills }
+        Self {
+            confirmation_required,
+            critical_skills,
+        }
     }
 
     pub fn validate(&self, skill: &str, complexity: TaskComplexity) -> PolicyDecision {
         if self.critical_skills.contains(skill) && complexity != TaskComplexity::Critical {
             return PolicyDecision::Denied {
-                reason: format!("Skill '{}' requires Critical tier, but task is {:?}", skill, complexity),
+                reason: format!(
+                    "Skill '{}' requires Critical tier, but task is {:?}",
+                    skill, complexity
+                ),
             };
         }
         if self.confirmation_required.contains(skill) {
-            return PolicyDecision::RequiresConfirmation { skill: skill.to_string() };
+            return PolicyDecision::RequiresConfirmation {
+                skill: skill.to_string(),
+            };
         }
         PolicyDecision::Allowed
     }
 }
 
 impl Default for SkillPolicyEnforcer {
-    fn default() -> Self { Self::new() }
+    fn default() -> Self {
+        Self::new()
+    }
 }
 
 #[cfg(test)]
@@ -58,9 +72,13 @@ mod tests {
     fn test_critical_skill_denied_at_standard() {
         let enforcer = SkillPolicyEnforcer::new();
         let result = enforcer.validate("phone_call", TaskComplexity::Standard);
-        assert_eq!(result, PolicyDecision::Denied {
-            reason: "Skill 'phone_call' requires Critical tier, but task is Standard".to_string(),
-        });
+        assert_eq!(
+            result,
+            PolicyDecision::Denied {
+                reason: "Skill 'phone_call' requires Critical tier, but task is Standard"
+                    .to_string(),
+            }
+        );
     }
 
     #[test]
@@ -76,8 +94,11 @@ mod tests {
         // send_message is in both critical_skills and confirmation_required,
         // so at Critical tier it passes the deny check but hits confirmation
         let result = enforcer.validate("send_message", TaskComplexity::Critical);
-        assert_eq!(result, PolicyDecision::RequiresConfirmation {
-            skill: "send_message".to_string(),
-        });
+        assert_eq!(
+            result,
+            PolicyDecision::RequiresConfirmation {
+                skill: "send_message".to_string(),
+            }
+        );
     }
 }

@@ -125,9 +125,9 @@ pub fn smart_add(
     trust: f64,
 ) -> i64 {
     match check_duplicate(store, content, entities) {
-        DedupResult::New => {
-            store.add(content, category, tags, entities, trust).unwrap_or(-1)
-        }
+        DedupResult::New => store
+            .add(content, category, tags, entities, trust)
+            .unwrap_or(-1),
         DedupResult::Duplicate { existing_id, .. } => {
             // Boost trust on the existing fact since it's being "rediscovered"
             let _ = store.feedback(existing_id, true);
@@ -206,11 +206,25 @@ mod tests {
     fn test_smart_add_dedup() {
         let store = FactStore::open_in_memory().unwrap();
 
-        let id1 = smart_add(&store, "serde_json pinned to 1.0.140 for Android", FactCategory::Project, &["rust"], &["serde_json", "android"], 0.8);
+        let id1 = smart_add(
+            &store,
+            "serde_json pinned to 1.0.140 for Android",
+            FactCategory::Project,
+            &["rust"],
+            &["serde_json", "android"],
+            0.8,
+        );
         assert!(id1 > 0);
 
         // Same content should dedup
-        let id2 = smart_add(&store, "serde_json pinned to 1.0.140 for Android", FactCategory::Project, &["rust"], &["serde_json", "android"], 0.8);
+        let id2 = smart_add(
+            &store,
+            "serde_json pinned to 1.0.140 for Android",
+            FactCategory::Project,
+            &["rust"],
+            &["serde_json", "android"],
+            0.8,
+        );
         assert_eq!(id1, id2);
 
         // Only one fact in store
@@ -221,7 +235,13 @@ mod tests {
     #[test]
     fn test_is_redundant_message() {
         let recent = vec!["android-ai-agent uses Rust edition 2021"];
-        assert!(is_redundant_message("android-ai-agent uses Rust edition 2021", &recent));
-        assert!(!is_redundant_message("it also uses Kotlin for the UI", &recent));
+        assert!(is_redundant_message(
+            "android-ai-agent uses Rust edition 2021",
+            &recent
+        ));
+        assert!(!is_redundant_message(
+            "it also uses Kotlin for the UI",
+            &recent
+        ));
     }
 }

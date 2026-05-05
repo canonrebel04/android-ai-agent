@@ -7,8 +7,7 @@ use agent_core::model_router::ModelRouter;
 use agent_core::provider::openrouter::OpenRouterProvider;
 #[tokio::main]
 async fn main() {
-    let api_key = std::env::var("OPENROUTER_API_KEY")
-        .expect("Set OPENROUTER_API_KEY");
+    let api_key = std::env::var("OPENROUTER_API_KEY").expect("Set OPENROUTER_API_KEY");
     let provider = OpenRouterProvider::new(api_key);
     let http = HttpClient::new();
     let router = ModelRouter::new(ModelRouter::default_tiers());
@@ -24,7 +23,17 @@ async fn main() {
         max_steps: 3,
         ..Default::default()
     });
-    match agent.run(&http, &agent_core::provider::ProviderBackend::OpenRouter(provider), &router, &mut ctx, prompt, &system_prompt).await {
+    match agent
+        .run(
+            &http,
+            &agent_core::provider::ProviderBackend::OpenRouter(provider),
+            &router,
+            &mut ctx,
+            prompt,
+            &system_prompt,
+        )
+        .await
+    {
         Ok(result) => {
             println!("Agent completed: {}", result);
             println!("\nEvent log:");

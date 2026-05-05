@@ -177,23 +177,26 @@ impl ModelRouter {
 
             // Send request through http_client with cache support
             let url = format!("{}/chat/completions", backend.base_url());
-            match client.send_cached(
-                url,
-                headers,
-                body,
-                cached.modified_body,
-                cached.extra_headers.clone(),
-            ).await {
+            match client
+                .send_cached(
+                    url,
+                    headers,
+                    body,
+                    cached.modified_body,
+                    cached.extra_headers.clone(),
+                )
+                .await
+            {
                 Ok(resp) => {
-                    let resp = resp.error_for_status()
-                        .map_err(LlmError::Http)?;
-                    let json: serde_json::Value = resp.json().await
-                        .map_err(LlmError::Http)?;
+                    let resp = resp.error_for_status().map_err(LlmError::Http)?;
+                    let json: serde_json::Value = resp.json().await.map_err(LlmError::Http)?;
 
                     // Parse OpenRouter-compatible response
-                    let choices = json["choices"].as_array()
+                    let choices = json["choices"]
+                        .as_array()
                         .ok_or_else(|| LlmError::ModelUnavailable("empty response".into()))?;
-                    let choice = choices.first()
+                    let choice = choices
+                        .first()
                         .ok_or_else(|| LlmError::ModelUnavailable("no choices".into()))?;
                     let message = &choice["message"];
                     let content = message["content"].as_str().unwrap_or("").to_string();
@@ -205,7 +208,8 @@ impl ModelRouter {
                         model: model_name,
                         usage: crate::provider::Usage {
                             prompt_tokens: usage_json["prompt_tokens"].as_u64().unwrap_or(0) as u32,
-                            completion_tokens: usage_json["completion_tokens"].as_u64().unwrap_or(0) as u32,
+                            completion_tokens: usage_json["completion_tokens"].as_u64().unwrap_or(0)
+                                as u32,
                             total_tokens: usage_json["total_tokens"].as_u64().unwrap_or(0) as u32,
                         },
                     };

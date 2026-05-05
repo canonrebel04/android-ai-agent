@@ -1,10 +1,10 @@
 //! Chat history database.
 //! SQLite-backed storage for unified chat messages.
 
+use crate::chat_models::ChatMessage;
 use rusqlite::{params, Connection, Result as SqlResult};
 use std::path::Path;
 use std::sync::Mutex;
-use crate::chat_models::ChatMessage;
 
 pub struct ChatStore {
     conn: Mutex<Connection>,

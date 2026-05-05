@@ -25,24 +25,31 @@ impl ContextManager {
 
     pub fn set_system_prompt(&mut self, prompt: &str) {
         self.messages.retain(|m| m.role != "system");
-        self.messages.insert(0, Message {
-            role: "system".to_string(),
-            content: prompt.to_string(),
-        });
+        self.messages.insert(
+            0,
+            Message {
+                role: "system".to_string(),
+                content: prompt.to_string(),
+            },
+        );
         self.trim();
     }
 
     fn estimated_tokens(&self) -> usize {
-        self.messages.iter()
+        self.messages
+            .iter()
             .map(|m| m.role.len() + m.content.len())
-            .sum::<usize>() / self.chars_per_token
+            .sum::<usize>()
+            / self.chars_per_token
     }
 
     fn trim(&mut self) {
         // Bolt ⚡ Optimization: O(N) context trimming
         // We avoid calling Vec::remove() in a loop, which was O(N^2),
         // and instead track `total_chars` in a single pass before a final Vec::drain().
-        let mut total_chars: usize = self.messages.iter()
+        let mut total_chars: usize = self
+            .messages
+            .iter()
             .map(|m| m.role.len() + m.content.len())
             .sum();
 
@@ -128,7 +135,11 @@ impl ContextManager {
 }
 
 fn truncate(s: &str, max_chars: usize) -> String {
-    if s.len() <= max_chars { s.to_string() } else { format!("{}...", &s[..max_chars]) }
+    if s.len() <= max_chars {
+        s.to_string()
+    } else {
+        format!("{}...", &s[..max_chars])
+    }
 }
 
 #[cfg(test)]
