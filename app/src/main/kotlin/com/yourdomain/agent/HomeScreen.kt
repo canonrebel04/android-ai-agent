@@ -36,6 +36,10 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.unit.dp
+import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.foundation.text.KeyboardActions
+import androidx.compose.ui.text.input.ImeAction
+import androidx.compose.ui.platform.LocalFocusManager
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -46,6 +50,7 @@ fun HomeScreen(
     val state by viewModel.state.collectAsState()
     var inputText by remember { mutableStateOf("") }
     val listState = rememberLazyListState()
+    val focusManager = LocalFocusManager.current
 
     // Auto-scroll to bottom when new log lines arrive
     LaunchedEffect(state.logLines.size) {
@@ -91,6 +96,17 @@ fun HomeScreen(
                         placeholder = { Text("Enter task prompt...") },
                         singleLine = true,
                         enabled = state.status != "running",
+                        keyboardOptions = KeyboardOptions(imeAction = ImeAction.Send),
+                        keyboardActions = KeyboardActions(
+                            onSend = {
+                                val task = inputText.trim()
+                                if (task.isNotEmpty()) {
+                                    viewModel.startTask(task)
+                                    inputText = ""
+                                    focusManager.clearFocus()
+                                }
+                            }
+                        )
                     )
                     Spacer(modifier = Modifier.width(8.dp))
                     if (state.status == "running") {
