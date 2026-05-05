@@ -1,5 +1,6 @@
 package com.yourdomain.agent
 
+import android.util.Log
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import kotlinx.coroutines.Dispatchers
@@ -7,6 +8,7 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
+import org.json.JSONArray
 
 data class AgentState(
     val status: String = "idle",
@@ -67,9 +69,20 @@ class AgentViewModel : ViewModel() {
     fun refreshHistory() {
         viewModelScope.launch {
             val historyJson = withContext(Dispatchers.IO) { RustBridge.getHistory() }
-            // TODO: Parse JSON history. For now, just a dummy if empty.
-            if (historyJson.contains("Unified Chat")) {
-                // Dummy parsing or state update logic
+            try {
+                val jsonArray = JSONArray(historyJson)
+                val messages = List(jsonArray.length()) { i ->
+                    val obj = jsonArray.getJSONObject(i)
+                    ChatMessage(
+                        id = obj.getString("id"),
+                        role = obj.getString("role"),
+                        content = obj.getString("content"),
+                        timestamp = obj.getLong("timestamp")
+                    )
+                }
+                _state.value = _state.value.copy(chatMessages = messages)
+            } catch (e: Exception) {
+                Log.e("AgentViewModel", "Error parsing history JSON", e)
             }
         }
     }
