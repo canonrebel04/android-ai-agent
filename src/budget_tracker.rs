@@ -12,16 +12,28 @@ pub struct TierPricing {
 
 impl TierPricing {
     pub fn trivial() -> Self {
-        Self { input_per_1k: 0.00015, output_per_1k: 0.0006 }
+        Self {
+            input_per_1k: 0.00015,
+            output_per_1k: 0.0006,
+        }
     }
     pub fn standard() -> Self {
-        Self { input_per_1k: 0.005, output_per_1k: 0.015 }
+        Self {
+            input_per_1k: 0.005,
+            output_per_1k: 0.015,
+        }
     }
     pub fn complex() -> Self {
-        Self { input_per_1k: 0.01, output_per_1k: 0.03 }
+        Self {
+            input_per_1k: 0.01,
+            output_per_1k: 0.03,
+        }
     }
     pub fn critical() -> Self {
-        Self { input_per_1k: 0.015, output_per_1k: 0.075 }
+        Self {
+            input_per_1k: 0.015,
+            output_per_1k: 0.075,
+        }
     }
 }
 
@@ -51,6 +63,12 @@ pub struct BudgetTracker {
     budget_threshold: Mutex<f64>,
 }
 
+impl Default for BudgetTracker {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl BudgetTracker {
     pub fn new() -> Self {
         Self {
@@ -64,10 +82,12 @@ impl BudgetTracker {
     pub fn record_usage(&self, tier: Tier, input_tokens: u64, output_tokens: u64) {
         let pricing = tier.pricing();
         let cost = (input_tokens as f64 / 1000.0) * pricing.input_per_1k
-                 + (output_tokens as f64 / 1000.0) * pricing.output_per_1k;
+            + (output_tokens as f64 / 1000.0) * pricing.output_per_1k;
 
-        self.monthly_input_tokens.fetch_add(input_tokens, Ordering::SeqCst);
-        self.monthly_output_tokens.fetch_add(output_tokens, Ordering::SeqCst);
+        self.monthly_input_tokens
+            .fetch_add(input_tokens, Ordering::SeqCst);
+        self.monthly_output_tokens
+            .fetch_add(output_tokens, Ordering::SeqCst);
         *self.monthly_cost.lock().unwrap() += cost;
     }
 

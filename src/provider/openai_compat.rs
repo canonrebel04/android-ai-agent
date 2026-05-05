@@ -84,10 +84,7 @@ pub fn parse_openai_response(
     // DeepSeek: extract reasoning_content if present (thinking mode)
     let reasoning = message["reasoning_content"].as_str().map(|s| s.to_string());
 
-    let model_name = json["model"]
-        .as_str()
-        .unwrap_or(fallback_model)
-        .to_string();
+    let model_name = json["model"].as_str().unwrap_or(fallback_model).to_string();
 
     let usage = &json["usage"];
 

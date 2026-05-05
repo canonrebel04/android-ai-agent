@@ -1,2 +1,2 @@
-pub mod policy_enforcer;
 pub mod permission_guard;
+pub mod policy_enforcer;

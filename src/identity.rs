@@ -20,7 +20,10 @@ pub fn build_system_prompt(
         String::new()
     };
 
-    format!("{}{}{}\n\n{}", capability_block, constraints, memory_section, base_prompt)
+    format!(
+        "{}{}{}\n\n{}",
+        capability_block, constraints, memory_section, base_prompt
+    )
 }
 
 #[cfg(test)]
@@ -28,7 +31,11 @@ mod tests {
     use super::*;
     #[test]
     fn test_builds_with_memory() {
-        let prompt = build_system_prompt(TaskComplexity::Complex, "You are helpful.", "User prefers concise.");
+        let prompt = build_system_prompt(
+            TaskComplexity::Complex,
+            "You are helpful.",
+            "User prefers concise.",
+        );
         assert!(prompt.contains("Complex mode"));
         assert!(prompt.contains("CONSTRAINTS"));
         assert!(prompt.contains("concise"));

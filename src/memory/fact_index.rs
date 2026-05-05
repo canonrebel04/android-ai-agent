@@ -55,12 +55,43 @@ pub fn extract_entities(text: &str) -> Vec<String> {
 
 fn is_common_word(word: &str) -> bool {
     let common = [
-        "The", "This", "That", "These", "Those", "There", "Their", "They",
-        "When", "Where", "Which", "While", "Would", "Could", "Should",
-        "About", "After", "Before", "During", "Without", "Within",
-        "However", "Therefore", "Because", "Although",
-        "First", "Second", "Third", "Next", "Last", "Final",
-        "Android", "Phase", "Task", "Step", "Goal", "Note",
+        "The",
+        "This",
+        "That",
+        "These",
+        "Those",
+        "There",
+        "Their",
+        "They",
+        "When",
+        "Where",
+        "Which",
+        "While",
+        "Would",
+        "Could",
+        "Should",
+        "About",
+        "After",
+        "Before",
+        "During",
+        "Without",
+        "Within",
+        "However",
+        "Therefore",
+        "Because",
+        "Although",
+        "First",
+        "Second",
+        "Third",
+        "Next",
+        "Last",
+        "Final",
+        "Android",
+        "Phase",
+        "Task",
+        "Step",
+        "Goal",
+        "Note",
     ];
     common.contains(&word)
 }
@@ -68,21 +99,18 @@ fn is_common_word(word: &str) -> bool {
 /// Full probe pipeline: extract entities → probe fact_store for each → deduplicate → rank.
 pub fn probe_all(store: &FactStore, text: &str) -> Vec<ProbeResult> {
     let entities = extract_entities(text);
-    let mut seen: HashSet<i64> = HashSet::new();
     let mut results = Vec::new();
+    if entities.is_empty() {
+        return results;
+    }
 
-    for entity in &entities {
-        if let Ok(facts) = store.probe(entity) {
-            for fact in facts {
-                if seen.insert(fact.id) {
-                    // Relevance = trust * (1 if exact entity match, 0.5 if partial)
-                    let relevance = fact.trust;
-                    results.push(ProbeResult {
-                        fact,
-                        relevance,
-                    });
-                }
-            }
+    let entity_refs: Vec<&str> = entities.iter().map(|s| s.as_str()).collect();
+    let limit = (entities.len() * 50).clamp(100, 500);
+
+    if let Ok(facts) = store.probe_batched(&entity_refs, limit) {
+        for fact in facts {
+            let relevance = fact.trust;
+            results.push(ProbeResult { fact, relevance });
         }
     }
 
@@ -98,42 +126,37 @@ pub fn probe_all(store: &FactStore, text: &str) -> Vec<ProbeResult> {
 
 /// Deep reason: for each pair of entities, find facts connecting both.
 pub fn reason_all(store: &FactStore, entities: &[&str]) -> Vec<Fact> {
-    let mut seen: HashSet<i64> = HashSet::new();
-    let mut results = Vec::new();
-
-    // Try all entity pairs
-    for i in 0..entities.len() {
-        for j in (i + 1)..entities.len() {
-            if let Ok(facts) = store.reason(&[entities[i], entities[j]]) {
-                for fact in facts {
-                    if seen.insert(fact.id) {
-                        results.push(fact);
-                    }
-                }
-            }
-        }
+    if entities.is_empty() {
+        return Vec::new();
     }
 
-    // Also try single-entity probes for uncovered entities
-    for entity in entities {
-        if let Ok(facts) = store.probe(entity) {
-            for fact in facts {
-                if seen.insert(fact.id) {
-                    results.push(fact);
-                }
-            }
-        }
-    }
+    let limit = (entities.len() * 30).clamp(100, 500);
+    let mut facts = store.probe_batched(entities, limit).unwrap_or_default();
 
-    results
+    // Sort to prioritize facts that match MULTIPLE entities
+    facts.sort_by(|a, b| {
+        // Count how many of the query entities are present in this fact's entities
+        let a_matches = entities
+            .iter()
+            .filter(|&&e| a.entities.iter().any(|fe| fe.contains(e) || e.contains(fe)))
+            .count();
+        let b_matches = entities
+            .iter()
+            .filter(|&&e| b.entities.iter().any(|fe| fe.contains(e) || e.contains(fe)))
+            .count();
+
+        b_matches.cmp(&a_matches).then(
+            b.trust
+                .partial_cmp(&a.trust)
+                .unwrap_or(std::cmp::Ordering::Equal),
+        )
+    });
+
+    facts
 }
 
 /// Search for a topic with entity-aware boosting.
-pub fn search_with_entities(
-    store: &FactStore,
-    query: &str,
-    limit: usize,
-) -> Vec<ProbeResult> {
+pub fn search_with_entities(store: &FactStore, query: &str, limit: usize) -> Vec<ProbeResult> {
     let entities = extract_entities(query);
 
     // FTS5 search
@@ -160,12 +183,13 @@ pub fn search_with_entities(
 
 #[cfg(test)]
 mod tests {
-    use crate::memory::fact_store::FactCategory;
+
     use super::*;
 
     #[test]
     fn test_extract_repo_names() {
-        let entities = extract_entities("I'm working on canonrebel04/android-ai-agent and openclaw/openclaw");
+        let entities =
+            extract_entities("I'm working on canonrebel04/android-ai-agent and openclaw/openclaw");
         assert!(entities.contains(&"canonrebel04/android-ai-agent".to_string()));
         assert!(entities.contains(&"openclaw/openclaw".to_string()));
     }
@@ -193,8 +217,24 @@ mod tests {
     #[test]
     fn test_probe_all_with_fact_store() {
         let store = FactStore::open_in_memory().unwrap();
-        store.add("claude-sonnet-4 costs $3/$15 per 1M", crate::memory::fact_store::FactCategory::Tool, &["pricing"], &["claude-sonnet-4", "pricing"], 0.9).unwrap();
-        store.add("deepseek-v4 costs $0.14/$0.28 per 1M", crate::memory::fact_store::FactCategory::Tool, &["pricing"], &["deepseek-v4", "pricing"], 0.85).unwrap();
+        store
+            .add(
+                "claude-sonnet-4 costs $3/$15 per 1M",
+                crate::memory::fact_store::FactCategory::Tool,
+                &["pricing"],
+                &["claude-sonnet-4", "pricing"],
+                0.9,
+            )
+            .unwrap();
+        store
+            .add(
+                "deepseek-v4 costs $0.14/$0.28 per 1M",
+                crate::memory::fact_store::FactCategory::Tool,
+                &["pricing"],
+                &["deepseek-v4", "pricing"],
+                0.85,
+            )
+            .unwrap();
 
         let results = probe_all(&store, "What is the pricing of claude-sonnet-4?");
         assert!(!results.is_empty());

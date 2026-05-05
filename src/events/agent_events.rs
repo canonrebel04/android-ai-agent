@@ -34,31 +34,17 @@ pub enum AgentEvent {
         summary: String,
     },
     /// A destructive or sensitive skill requires user confirmation.
-    ConfirmationRequired {
-        skill: String,
-        reason: String,
-    },
+    ConfirmationRequired { skill: String, reason: String },
     /// The user has responded to a confirmation prompt.
-    ConfirmationReceived {
-        approved: bool,
-    },
+    ConfirmationReceived { approved: bool },
     /// The task completed successfully.
-    TaskCompleted {
-        summary: String,
-        usage: Usage,
-    },
+    TaskCompleted { summary: String, usage: Usage },
     /// The task failed with an error.
-    TaskFailed {
-        error: String,
-    },
+    TaskFailed { error: String },
     /// Consecutive identical screen captures detected (loop stall).
-    StallDetected {
-        identical_screens: u32,
-    },
+    StallDetected { identical_screens: u32 },
     /// A safety loop-guard triggered (max iterations, etc.).
-    LoopGuardTriggered {
-        reason: String,
-    },
+    LoopGuardTriggered { reason: String },
 }
 
 impl AgentEvent {

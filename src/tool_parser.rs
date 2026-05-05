@@ -68,8 +68,7 @@ mod tests {
 
     #[test]
     fn test_parse_openai_tool_call() {
-        let response =
-            r#"{"tool_calls": [{"function": {"name": "web_search", "arguments": {"query": "rust lang"}}}]}"#;
+        let response = r#"{"tool_calls": [{"function": {"name": "web_search", "arguments": {"query": "rust lang"}}}]}"#;
         let action = parse(response).unwrap();
         assert_eq!(action.skill, "web_search");
         assert_eq!(action.parameters["query"], "rust lang");

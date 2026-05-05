@@ -17,20 +17,11 @@ use reqwest::Client;
 use tokio::task::JoinSet;
 
 /// Configuration for the full pre-fetch pipeline.
+#[derive(Default)]
 pub struct PreFetchConfig {
     pub web_search_enabled: bool,
     pub web_config: WebPrefetchConfig,
     pub injector_config: InjectorConfig,
-}
-
-impl Default for PreFetchConfig {
-    fn default() -> Self {
-        Self {
-            web_search_enabled: false,
-            web_config: WebPrefetchConfig::default(),
-            injector_config: InjectorConfig::default(),
-        }
-    }
 }
 
 /// The pre-fetch engine.
@@ -132,9 +123,7 @@ impl PreFetcher {
             let client = self.client.clone();
             let config = self.config.web_config.clone();
 
-            set.spawn(async move {
-                search_direct(&client, &query, &config).await
-            });
+            set.spawn(async move { search_direct(&client, &query, &config).await });
         }
 
         while let Some(result) = set.join_next().await {
@@ -181,7 +170,11 @@ fn extract_urls(text: &str) -> Vec<String> {
     // Match http:// or https:// followed by non-whitespace chars
     let re = regex::Regex::new(r"https?://\S+").unwrap();
     re.find_iter(text)
-        .map(|m| m.as_str().trim_end_matches(&['.', ',', ')', ']', '}', '"', '\''][..]).to_string())
+        .map(|m| {
+            m.as_str()
+                .trim_end_matches(&['.', ',', ')', ']', '}', '"', '\''][..])
+                .to_string()
+        })
         .collect()
 }
 
@@ -256,49 +249,123 @@ async fn search_brave_direct(
         crate::web_prefetch::urlencoding(query),
         config.max_results
     );
-    let resp = match client.get(&url)
+    let resp = match client
+        .get(&url)
         .header("Accept", "application/json")
         .header("X-Subscription-Token", api_key)
         .timeout(std::time::Duration::from_secs(config.timeout_secs))
-        .send().await
-    { Ok(r) => r, Err(_) => return Vec::new() };
-    let json: serde_json::Value = match resp.json().await { Ok(j) => j, Err(_) => return Vec::new() };
-    json["web"]["results"].as_array().unwrap_or(&Vec::new()).iter()
+        .send()
+        .await
+    {
+        Ok(r) => r,
+        Err(_) => return Vec::new(),
+    };
+    let json: serde_json::Value = match resp.json().await {
+        Ok(j) => j,
+        Err(_) => return Vec::new(),
+    };
+    json["web"]["results"]
+        .as_array()
+        .unwrap_or(&Vec::new())
+        .iter()
         .map(|r| WebSearchResult {
-            title: crate::web_prefetch::truncate(r["title"].as_str().unwrap_or(""), config.max_chars_per_result),
-            snippet: crate::web_prefetch::truncate(r["description"].as_str().unwrap_or(""), config.max_chars_per_result),
+            title: crate::web_prefetch::truncate(
+                r["title"].as_str().unwrap_or(""),
+                config.max_chars_per_result,
+            ),
+            snippet: crate::web_prefetch::truncate(
+                r["description"].as_str().unwrap_or(""),
+                config.max_chars_per_result,
+            ),
             url: r["url"].as_str().unwrap_or("").to_string(),
-        }).collect()
+        })
+        .collect()
 }
 
 async fn search_searxng_direct(
-    client: &Client, query: &str, base_url: &str, config: &WebPrefetchConfig,
+    client: &Client,
+    query: &str,
+    base_url: &str,
+    config: &WebPrefetchConfig,
 ) -> Vec<WebSearchResult> {
-    let url = format!("{}/search?q={}&format=json", base_url.trim_end_matches('/'), crate::web_prefetch::urlencoding(query));
-    let resp = match client.get(&url).timeout(std::time::Duration::from_secs(config.timeout_secs)).send().await
-    { Ok(r) => r, Err(_) => return Vec::new() };
-    let json: serde_json::Value = match resp.json().await { Ok(j) => j, Err(_) => return Vec::new() };
-    json["results"].as_array().unwrap_or(&Vec::new()).iter().take(config.max_results)
+    let url = format!(
+        "{}/search?q={}&format=json",
+        base_url.trim_end_matches('/'),
+        crate::web_prefetch::urlencoding(query)
+    );
+    let resp = match client
+        .get(&url)
+        .timeout(std::time::Duration::from_secs(config.timeout_secs))
+        .send()
+        .await
+    {
+        Ok(r) => r,
+        Err(_) => return Vec::new(),
+    };
+    let json: serde_json::Value = match resp.json().await {
+        Ok(j) => j,
+        Err(_) => return Vec::new(),
+    };
+    json["results"]
+        .as_array()
+        .unwrap_or(&Vec::new())
+        .iter()
+        .take(config.max_results)
         .map(|r| WebSearchResult {
-            title: crate::web_prefetch::truncate(r["title"].as_str().unwrap_or(""), config.max_chars_per_result),
-            snippet: crate::web_prefetch::truncate(r["content"].as_str().unwrap_or(""), config.max_chars_per_result),
+            title: crate::web_prefetch::truncate(
+                r["title"].as_str().unwrap_or(""),
+                config.max_chars_per_result,
+            ),
+            snippet: crate::web_prefetch::truncate(
+                r["content"].as_str().unwrap_or(""),
+                config.max_chars_per_result,
+            ),
             url: r["url"].as_str().unwrap_or("").to_string(),
-        }).collect()
+        })
+        .collect()
 }
 
 async fn search_websurfx_direct(
-    client: &Client, query: &str, base_url: &str, config: &WebPrefetchConfig,
+    client: &Client,
+    query: &str,
+    base_url: &str,
+    config: &WebPrefetchConfig,
 ) -> Vec<WebSearchResult> {
-    let url = format!("{}/search?q={}&format=json", base_url.trim_end_matches('/'), crate::web_prefetch::urlencoding(query));
-    let resp = match client.get(&url).timeout(std::time::Duration::from_secs(config.timeout_secs)).send().await
-    { Ok(r) => r, Err(_) => return Vec::new() };
-    let json: serde_json::Value = match resp.json().await { Ok(j) => j, Err(_) => return Vec::new() };
-    json["results"].as_array().unwrap_or(&Vec::new()).iter().take(config.max_results)
+    let url = format!(
+        "{}/search?q={}&format=json",
+        base_url.trim_end_matches('/'),
+        crate::web_prefetch::urlencoding(query)
+    );
+    let resp = match client
+        .get(&url)
+        .timeout(std::time::Duration::from_secs(config.timeout_secs))
+        .send()
+        .await
+    {
+        Ok(r) => r,
+        Err(_) => return Vec::new(),
+    };
+    let json: serde_json::Value = match resp.json().await {
+        Ok(j) => j,
+        Err(_) => return Vec::new(),
+    };
+    json["results"]
+        .as_array()
+        .unwrap_or(&Vec::new())
+        .iter()
+        .take(config.max_results)
         .map(|r| WebSearchResult {
-            title: crate::web_prefetch::truncate(r["title"].as_str().unwrap_or(""), config.max_chars_per_result),
-            snippet: crate::web_prefetch::truncate(r["description"].as_str().unwrap_or(""), config.max_chars_per_result),
+            title: crate::web_prefetch::truncate(
+                r["title"].as_str().unwrap_or(""),
+                config.max_chars_per_result,
+            ),
+            snippet: crate::web_prefetch::truncate(
+                r["description"].as_str().unwrap_or(""),
+                config.max_chars_per_result,
+            ),
             url: r["url"].as_str().unwrap_or("").to_string(),
-        }).collect()
+        })
+        .collect()
 }
 
 #[cfg(test)]

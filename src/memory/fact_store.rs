@@ -260,6 +260,49 @@ impl FactStore {
         Ok(results)
     }
 
+    /// Batch probe: finds facts that mention ANY of the given entities.
+    pub fn probe_batched(&self, entities: &[&str], limit: usize) -> SqlResult<Vec<Fact>> {
+        if entities.is_empty() {
+            return Ok(Vec::new());
+        }
+
+        let conn = self.conn.lock().unwrap();
+
+        let conditions: Vec<String> = (0..entities.len())
+            .map(|i| format!("f.entities LIKE ?{}", i + 1))
+            .collect();
+        let where_clause = conditions.join(" OR ");
+
+        let sql = format!(
+            "SELECT f.id, f.content, f.category, f.tags, f.entities, f.trust,
+                    f.created_at, f.last_accessed, f.access_count
+             FROM facts f
+             WHERE {}
+             ORDER BY f.trust DESC, f.access_count DESC
+             LIMIT ?{}",
+            where_clause,
+            entities.len() + 1
+        );
+
+        let mut stmt = conn.prepare(&sql)?;
+
+        let patterns: Vec<String> = entities.iter().map(|e| format!("%{}%", e)).collect();
+        let limit_i64 = limit as i64;
+
+        let mut params: Vec<&dyn rusqlite::types::ToSql> = patterns
+            .iter()
+            .map(|p| p as &dyn rusqlite::types::ToSql)
+            .collect();
+        params.push(&limit_i64);
+
+        let rows = stmt.query_map(params.as_slice(), row_to_fact)?;
+        let mut results = Vec::new();
+        for row in rows {
+            results.push(row?);
+        }
+        Ok(results)
+    }
+
     /// Reason: facts connected to MULTIPLE entities simultaneously.
     /// Finds facts that mention ALL of the given entities.
     pub fn reason(&self, entities: &[&str]) -> SqlResult<Vec<Fact>> {
@@ -356,7 +399,12 @@ impl FactStore {
     }
 
     /// Update a fact's content or trust.
-    pub fn update(&self, id: i64, content: Option<&str>, trust_delta: Option<f64>) -> SqlResult<()> {
+    pub fn update(
+        &self,
+        id: i64,
+        content: Option<&str>,
+        trust_delta: Option<f64>,
+    ) -> SqlResult<()> {
         let conn = self.conn.lock().unwrap();
 
         if let Some(c) = content {
@@ -410,10 +458,7 @@ impl FactStore {
     /// Purge facts below a trust threshold.
     pub fn purge_low_trust(&self, min_trust: f64) -> SqlResult<usize> {
         let conn = self.conn.lock().unwrap();
-        let count = conn.execute(
-            "DELETE FROM facts WHERE trust < ?1",
-            params![min_trust],
-        )?;
+        let count = conn.execute("DELETE FROM facts WHERE trust < ?1", params![min_trust])?;
         Ok(count)
     }
 }
@@ -438,7 +483,10 @@ fn split_csv(s: &str) -> Vec<String> {
     if s.is_empty() {
         return Vec::new();
     }
-    s.split(',').map(|t| t.trim().to_string()).filter(|t| !t.is_empty()).collect()
+    s.split(',')
+        .map(|t| t.trim().to_string())
+        .filter(|t| !t.is_empty())
+        .collect()
 }
 
 // ── Tests ──────────────────────────────────────────────────────────────────────
@@ -454,7 +502,15 @@ mod tests {
     #[test]
     fn test_add_and_search() {
         let store = test_store();
-        store.add("android-ai-agent uses Rust edition 2021", FactCategory::Project, &["android-ai-agent", "rust"], &["android-ai-agent", "rust"], 0.8).unwrap();
+        store
+            .add(
+                "android-ai-agent uses Rust edition 2021",
+                FactCategory::Project,
+                &["android-ai-agent", "rust"],
+                &["android-ai-agent", "rust"],
+                0.8,
+            )
+            .unwrap();
 
         let results = store.search("rust edition", 5).unwrap();
         assert!(!results.is_empty());
@@ -464,8 +520,24 @@ mod tests {
     #[test]
     fn test_probe_finds_entity() {
         let store = test_store();
-        store.add("serde_json pinned to 1.0.140", FactCategory::Project, &["android-ai-agent"], &["serde_json", "cross-compile"], 0.9).unwrap();
-        store.add("tokio 1.52 for async runtime", FactCategory::Project, &["android-ai-agent"], &["tokio"], 0.7).unwrap();
+        store
+            .add(
+                "serde_json pinned to 1.0.140",
+                FactCategory::Project,
+                &["android-ai-agent"],
+                &["serde_json", "cross-compile"],
+                0.9,
+            )
+            .unwrap();
+        store
+            .add(
+                "tokio 1.52 for async runtime",
+                FactCategory::Project,
+                &["android-ai-agent"],
+                &["tokio"],
+                0.7,
+            )
+            .unwrap();
 
         let results = store.probe("serde_json").unwrap();
         assert_eq!(results.len(), 1);
@@ -475,8 +547,24 @@ mod tests {
     #[test]
     fn test_reason_multiple_entities() {
         let store = test_store();
-        store.add("claude-sonnet-4 costs $3/$15 per 1M tokens", FactCategory::Tool, &["pricing"], &["claude-sonnet-4", "pricing"], 0.85).unwrap();
-        store.add("deepseek-v4 costs $0.14/$0.28 per 1M tokens", FactCategory::Tool, &["pricing"], &["deepseek-v4", "pricing"], 0.9).unwrap();
+        store
+            .add(
+                "claude-sonnet-4 costs $3/$15 per 1M tokens",
+                FactCategory::Tool,
+                &["pricing"],
+                &["claude-sonnet-4", "pricing"],
+                0.85,
+            )
+            .unwrap();
+        store
+            .add(
+                "deepseek-v4 costs $0.14/$0.28 per 1M tokens",
+                FactCategory::Tool,
+                &["pricing"],
+                &["deepseek-v4", "pricing"],
+                0.9,
+            )
+            .unwrap();
 
         // Should find facts that mention BOTH claude-sonnet-4 AND pricing
         let results = store.reason(&["claude-sonnet-4", "pricing"]).unwrap();
@@ -487,10 +575,12 @@ mod tests {
     #[test]
     fn test_feedback_adjusts_trust() {
         let store = test_store();
-        let id = store.add("test fact", FactCategory::General, &[], &["test"], 0.5).unwrap();
+        let id = store
+            .add("test fact", FactCategory::General, &[], &["test"], 0.5)
+            .unwrap();
 
-        store.feedback(id, true).unwrap();  // +0.05
-        store.feedback(id, true).unwrap();  // +0.05
+        store.feedback(id, true).unwrap(); // +0.05
+        store.feedback(id, true).unwrap(); // +0.05
         store.feedback(id, false).unwrap(); // -0.10
 
         let results = store.probe("test").unwrap();
@@ -501,8 +591,12 @@ mod tests {
     #[test]
     fn test_purge_low_trust() {
         let store = test_store();
-        store.add("high trust", FactCategory::General, &[], &["test"], 0.9).unwrap();
-        store.add("low trust", FactCategory::General, &[], &["test"], 0.1).unwrap();
+        store
+            .add("high trust", FactCategory::General, &[], &["test"], 0.9)
+            .unwrap();
+        store
+            .add("low trust", FactCategory::General, &[], &["test"], 0.1)
+            .unwrap();
 
         let purged = store.purge_low_trust(0.3).unwrap();
         assert!(purged >= 1);
@@ -515,8 +609,24 @@ mod tests {
     #[test]
     fn test_contradict_finds_conflicts() {
         let store = test_store();
-        store.add("Python is the best language", FactCategory::General, &[], &["python", "languages"], 0.9).unwrap();
-        store.add("Rust is better than Python", FactCategory::General, &[], &["python", "rust", "languages"], 0.3).unwrap();
+        store
+            .add(
+                "Python is the best language",
+                FactCategory::General,
+                &[],
+                &["python", "languages"],
+                0.9,
+            )
+            .unwrap();
+        store
+            .add(
+                "Rust is better than Python",
+                FactCategory::General,
+                &[],
+                &["python", "rust", "languages"],
+                0.3,
+            )
+            .unwrap();
 
         let conflicts = store.contradict().unwrap();
         // May or may not find conflicts depending on exact entity matching

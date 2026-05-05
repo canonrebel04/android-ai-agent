@@ -73,7 +73,11 @@ pub mod android {
     ) -> jstring {
         let outcome = unowned_env.with_env(|env| -> Result<_, jni::errors::Error> {
             let approved_bool = approved as u8 != 0;
-            let msg = if approved_bool { "confirmed" } else { "rejected" };
+            let msg = if approved_bool {
+                "confirmed"
+            } else {
+                "rejected"
+            };
             Ok(env.new_string(msg)?.into_raw())
         });
         outcome.resolve::<jni::errors::ThrowRuntimeExAndDefault>()
@@ -127,16 +131,17 @@ pub mod android {
     ) -> jstring {
         let outcome = unowned_env.with_env(|env| -> Result<_, jni::errors::Error> {
             let input: String = env.get_string(&json)?.into();
-            let msg: crate::chat_models::ChatMessage = serde_json::from_str(&input).map_err(|e| {
-                jni::errors::Error::JavaException {
+            let msg: crate::chat_models::ChatMessage =
+                serde_json::from_str(&input).map_err(|e| jni::errors::Error::JavaException {
                     class: "java/lang/IllegalArgumentException".to_string(),
                     msg: format!("Invalid JSON: {}", e),
-                }
-            })?;
+                })?;
 
             // Execute async process_message on the current thread's runtime
             let response = tokio::runtime::Handle::current().block_on(async {
-                crate::unified_agent::get_agent().process_message(msg.content).await
+                crate::unified_agent::get_agent()
+                    .process_message(msg.content)
+                    .await
             });
 
             Ok(env.new_string(&response)?.into_raw())
@@ -151,14 +156,12 @@ pub mod android {
     ) -> jstring {
         let outcome = unowned_env.with_env(|env| -> Result<_, jni::errors::Error> {
             // TODO: Fetch real history from memory_manager
-            let dummy_history = vec![
-                crate::chat_models::ChatMessage {
-                    id: "0".to_string(),
-                    role: "system".to_string(),
-                    content: "Welcome to Unified Chat".to_string(),
-                    timestamp: 0,
-                }
-            ];
+            let dummy_history = vec![crate::chat_models::ChatMessage {
+                id: "0".to_string(),
+                role: "system".to_string(),
+                content: "Welcome to Unified Chat".to_string(),
+                timestamp: 0,
+            }];
             let json = serde_json::to_string(&dummy_history).unwrap();
             Ok(env.new_string(&json)?.into_raw())
         });

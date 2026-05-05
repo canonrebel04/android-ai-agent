@@ -11,19 +11,19 @@
 //! - Skip-after-first optimization
 //! - File change detection (inode/mtime-based invalidation)
 
+use std::collections::HashMap;
 use std::fs;
 use std::path::{Path, PathBuf};
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::Mutex;
-use std::collections::HashMap;
 
 /// A bootstrap file loaded at session start.
 #[derive(Debug, Clone)]
 pub struct BootstrapFile {
-    pub name: String,          // e.g., "SOUL.md"
+    pub name: String, // e.g., "SOUL.md"
     pub path: PathBuf,
     pub content: String,
-    pub max_chars: usize,      // Truncate if exceeds
+    pub max_chars: usize, // Truncate if exceeds
 }
 
 /// Status of a bootstrap injection.
@@ -96,7 +96,11 @@ impl SoulSystem {
             let mtime = fs::metadata(path)
                 .ok()
                 .and_then(|m| m.modified().ok())
-                .map(|t| t.duration_since(std::time::UNIX_EPOCH).unwrap_or_default().as_secs())
+                .map(|t| {
+                    t.duration_since(std::time::UNIX_EPOCH)
+                        .unwrap_or_default()
+                        .as_secs()
+                })
                 .unwrap_or(0);
 
             let content = if let Some((cached_mtime, cached_content)) = cache.get(path) {
@@ -141,9 +145,7 @@ impl SoulSystem {
     fn read_file(path: &Path, max_chars: usize) -> String {
         let result = fs::read_to_string(path).unwrap_or_default();
         if result.len() > max_chars {
-            let boundary = result[..max_chars]
-                .rfind('\n')
-                .unwrap_or(max_chars);
+            let boundary = result[..max_chars].rfind('\n').unwrap_or(max_chars);
             result[..boundary].to_string()
         } else {
             result
@@ -174,7 +176,7 @@ impl SoulSystem {
 
         // Dynamic suffix: instructions + active context
         prompt.push_str(dynamic_instructions);
-        prompt.push_str("\n");
+        prompt.push('\n');
 
         if let Some(ctx) = active_context {
             prompt.push_str(ctx);
@@ -183,7 +185,9 @@ impl SoulSystem {
         // Split at cache boundary
         let (stable, dynamic) = if let Some(pos) = prompt.find("<!-- CACHE_BOUNDARY -->") {
             let s = prompt[..pos].trim().to_string();
-            let d = prompt[pos + "<!-- CACHE_BOUNDARY -->".len()..].trim().to_string();
+            let d = prompt[pos + "<!-- CACHE_BOUNDARY -->".len()..]
+                .trim()
+                .to_string();
             (s, d)
         } else {
             (String::new(), prompt.clone())
@@ -230,7 +234,11 @@ mod tests {
 
     fn temp_file(content: &str) -> PathBuf {
         let dir = std::env::temp_dir();
-        let path = dir.join(format!("test_soul_{}_{}.md", std::process::id(), rand_suffix()));
+        let path = dir.join(format!(
+            "test_soul_{}_{}.md",
+            std::process::id(),
+            rand_suffix()
+        ));
         let mut f = fs::File::create(&path).unwrap();
         f.write_all(content.as_bytes()).unwrap();
         path

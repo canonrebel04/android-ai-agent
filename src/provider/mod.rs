@@ -1,10 +1,10 @@
-pub mod openrouter;
 pub mod anthropic;
 pub mod deepseek;
 pub mod google;
-pub mod mistral;
 pub mod local;
+pub mod mistral;
 pub mod openai_compat;
+pub mod openrouter;
 
 use serde::{Deserialize, Serialize};
 use std::future::Future;
@@ -49,8 +49,8 @@ pub enum LlmError {
     AllFallbacksExhausted,
 }
 
-use std::pin::Pin;
 use futures_util::Stream;
+use std::pin::Pin;
 
 pub trait LlmProvider: Send + Sync {
     fn base_url(&self) -> &str;
