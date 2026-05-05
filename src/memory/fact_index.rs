@@ -5,6 +5,14 @@
 use crate::memory::fact_store::{Fact, FactStore, ProbeResult};
 use regex::Regex;
 use std::collections::HashSet;
+use once_cell::sync::Lazy;
+
+// Compiled regexes for entity extraction
+static REPO_RE: Lazy<Regex> = Lazy::new(|| Regex::new(r"\b([a-zA-Z0-9][-a-zA-Z0-9]*/[a-zA-Z0-9][-_.a-zA-Z0-9]*)\b").unwrap());
+static PROPER_RE: Lazy<Regex> = Lazy::new(|| Regex::new(r"\b([A-Z][a-z]+(?:\s+[A-Z][a-z]+)+)\b").unwrap());
+static CAP_RE: Lazy<Regex> = Lazy::new(|| Regex::new(r"(?:^|(?:\.|\?|!|\n)\s+|[^a-zA-Z])([A-Z][a-zA-Z]{2,})\b").unwrap());
+static TECH_RE: Lazy<Regex> = Lazy::new(|| Regex::new(r"\b([a-zA-Z][-a-zA-Z0-9]*[-.][a-zA-Z][-a-zA-Z0-9.]*)\b").unwrap());
+static VERSION_RE: Lazy<Regex> = Lazy::new(|| Regex::new(r"\b(v?\d+\.\d+(?:\.\d+)?)\b").unwrap());
 
 /// Extract likely entity names from text.
 /// Matches: capitalized words, hyphenated tech terms, repo names (owner/repo),
@@ -13,21 +21,18 @@ pub fn extract_entities(text: &str) -> Vec<String> {
     let mut entities = HashSet::new();
 
     // Repo names: owner/repo or owner/repo-name
-    let repo_re = Regex::new(r"\b([a-zA-Z0-9][-a-zA-Z0-9]*/[a-zA-Z0-9][-_.a-zA-Z0-9]*)\b").unwrap();
-    for cap in repo_re.captures_iter(text) {
+    for cap in REPO_RE.captures_iter(text) {
         entities.insert(cap[1].to_lowercase());
     }
 
     // Capitalized multi-word sequences (likely proper nouns)
-    let proper_re = Regex::new(r"\b([A-Z][a-z]+(?:\s+[A-Z][a-z]+)+)\b").unwrap();
-    for cap in proper_re.captures_iter(text) {
+    for cap in PROPER_RE.captures_iter(text) {
         entities.insert(cap[1].to_lowercase());
     }
 
     // Single capitalized words (not at start of sentence, min 3 chars)
     // Also matches at start of text via ^ alternative
-    let cap_re = Regex::new(r"(?:^|(?:\.|\?|!|\n)\s+|[^a-zA-Z])([A-Z][a-zA-Z]{2,})\b").unwrap();
-    for cap in cap_re.captures_iter(text) {
+    for cap in CAP_RE.captures_iter(text) {
         let word = &cap[1];
         // Filter out common words that happen to be capitalized
         if !is_common_word(word) {
@@ -36,8 +41,7 @@ pub fn extract_entities(text: &str) -> Vec<String> {
     }
 
     // Tech terms with dots or hyphens: rust-analyzer, claude-sonnet-4, com.example
-    let tech_re = Regex::new(r"\b([a-zA-Z][-a-zA-Z0-9]*[-.][a-zA-Z][-a-zA-Z0-9.]*)\b").unwrap();
-    for cap in tech_re.captures_iter(text) {
+    for cap in TECH_RE.captures_iter(text) {
         let term = &cap[1];
         if term.len() > 3 && term.contains('-') {
             entities.insert(term.to_lowercase());
@@ -45,8 +49,7 @@ pub fn extract_entities(text: &str) -> Vec<String> {
     }
 
     // Version patterns: v1.0.0, 0.22, edition 2021
-    let version_re = Regex::new(r"\b(v?\d+\.\d+(?:\.\d+)?)\b").unwrap();
-    for cap in version_re.captures_iter(text) {
+    for cap in VERSION_RE.captures_iter(text) {
         entities.insert(cap[1].to_string());
     }
 
@@ -192,8 +195,8 @@ mod tests {
     #[test]
     fn test_probe_all_with_fact_store() {
         let store = FactStore::open_in_memory().unwrap();
-        store.add("claude-sonnet-4 costs $3/$15 per 1M", FactCategory::Tool, &["pricing"], &["claude-sonnet-4", "pricing"], 0.9).unwrap();
-        store.add("deepseek-v4 costs $0.14/$0.28 per 1M", FactCategory::Tool, &["pricing"], &["deepseek-v4", "pricing"], 0.85).unwrap();
+        store.add("claude-sonnet-4 costs $3/$15 per 1M", crate::memory::fact_store::FactCategory::Tool, &["pricing"], &["claude-sonnet-4", "pricing"], 0.9).unwrap();
+        store.add("deepseek-v4 costs $0.14/$0.28 per 1M", crate::memory::fact_store::FactCategory::Tool, &["pricing"], &["deepseek-v4", "pricing"], 0.85).unwrap();
 
         let results = probe_all(&store, "What is the pricing of claude-sonnet-4?");
         assert!(!results.is_empty());
