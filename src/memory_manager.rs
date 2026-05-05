@@ -123,10 +123,7 @@ impl MemoryManager {
             content.replace_range(after_header..end_of_section, &new_section);
         } else {
             // Section missing — append at the end.
-            content.push_str(&format!(
-                "\n## Recent Context\n- {}\n",
-                task.trim()
-            ));
+            content.push_str(&format!("\n## Recent Context\n- {}\n", task.trim()));
         }
 
         self.write(&content)

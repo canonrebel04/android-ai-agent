@@ -5,8 +5,8 @@ use agent_core::model_router::ModelRouter;
 use agent_core::provider::openrouter::OpenRouterProvider;
 #[tokio::main]
 async fn main() {
-    let api_key = std::env::var("OPENROUTER_API_KEY")
-        .expect("Set OPENROUTER_API_KEY environment variable");
+    let api_key =
+        std::env::var("OPENROUTER_API_KEY").expect("Set OPENROUTER_API_KEY environment variable");
     let provider = OpenRouterProvider::new(api_key);
     let http = HttpClient::new();
     let router = ModelRouter::new(ModelRouter::default_tiers());
@@ -16,11 +16,20 @@ async fn main() {
     let complexity = complexity_classifier::classify(prompt);
     println!("Complexity: {:?}", complexity);
     println!("Sending prompt: {}", prompt);
-    match router.call_with_fallback(&http, &agent_core::provider::ProviderBackend::OpenRouter(provider), prompt, "You are a helpful assistant.").await {
+    match router
+        .call_with_fallback(
+            &http,
+            &agent_core::provider::ProviderBackend::OpenRouter(provider),
+            prompt,
+            "You are a helpful assistant.",
+        )
+        .await
+    {
         Ok(response) => {
             println!("Model: {}", response.model);
             println!("Response: {}", response.content);
-            println!("Tokens: {} prompt + {} completion = {} total",
+            println!(
+                "Tokens: {} prompt + {} completion = {} total",
                 response.usage.prompt_tokens,
                 response.usage.completion_tokens,
                 response.usage.total_tokens,

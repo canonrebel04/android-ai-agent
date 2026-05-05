@@ -1,8 +1,8 @@
 use super::{LlmError, LlmProvider, LlmRequest, LlmResponse, Usage};
 use crate::prompt_cache::{CacheBreakpoint, CacheableProvider, CachedRequest};
+use futures_util::{Stream, StreamExt};
 use reqwest::StatusCode;
 use serde_json::json;
-use futures_util::{Stream, StreamExt};
 use std::pin::Pin;
 
 pub struct OpenRouterProvider {
@@ -81,19 +81,18 @@ impl LlmProvider for OpenRouterProvider {
             let resp = resp.error_for_status()?;
 
             let json: serde_json::Value = resp.json().await?;
-            let choices = json["choices"].as_array()
+            let choices = json["choices"]
+                .as_array()
                 .ok_or_else(|| LlmError::ModelUnavailable("empty response".into()))?;
-            let choice = choices.first()
+            let choice = choices
+                .first()
                 .ok_or_else(|| LlmError::ModelUnavailable("no choices in response".into()))?;
             let message = &choice["message"];
             let usage = &json["usage"];
 
             Ok(LlmResponse {
                 content: message["content"].as_str().unwrap_or("").to_string(),
-                model: json["model"]
-                    .as_str()
-                    .unwrap_or(&request.model)
-                    .to_string(),
+                model: json["model"].as_str().unwrap_or(&request.model).to_string(),
                 usage: Usage {
                     prompt_tokens: usage["prompt_tokens"].as_u64().unwrap_or(0) as u32,
                     completion_tokens: usage["completion_tokens"].as_u64().unwrap_or(0) as u32,
@@ -138,7 +137,7 @@ impl LlmProvider for OpenRouterProvider {
             while let Some(item) = stream.next().await {
                 let chunk = item.map_err(LlmError::Http)?;
                 let text = String::from_utf8_lossy(&chunk);
-                
+
                 for line in text.lines() {
                     if line.starts_with("data: ") {
                         let data = &line[6..];
@@ -168,9 +167,7 @@ impl CacheableProvider for OpenRouterProvider {
         }
 
         let mut body = body.clone();
-        let messages = body
-            .get_mut("messages")
-            .and_then(|m| m.as_array_mut());
+        let messages = body.get_mut("messages").and_then(|m| m.as_array_mut());
 
         let Some(messages) = messages else {
             return CachedRequest::default();
@@ -181,10 +178,7 @@ impl CacheableProvider for OpenRouterProvider {
                 if let Some(arr) = content.as_array_mut() {
                     for block in arr.iter_mut() {
                         if let Some(obj) = block.as_object_mut() {
-                            obj.insert(
-                                "cache_control".to_string(),
-                                json!({"type": "ephemeral"}),
-                            );
+                            obj.insert("cache_control".to_string(), json!({"type": "ephemeral"}));
                         }
                     }
                 }

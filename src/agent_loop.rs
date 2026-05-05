@@ -89,7 +89,9 @@ impl AgentLoop {
                 self.emit(AgentEvent::TaskFailed {
                     error: "Budget exceeded mid-task".into(),
                 });
-                return Err(LlmError::ModelUnavailable("budget exceeded mid-task".into()));
+                return Err(LlmError::ModelUnavailable(
+                    "budget exceeded mid-task".into(),
+                ));
             }
 
             let response = router
@@ -128,9 +130,7 @@ impl AgentLoop {
 
             match tool_parser::parse(&response.content) {
                 Ok(action) => {
-                    let decision = self
-                        .policy_enforcer
-                        .validate(&action.skill, complexity);
+                    let decision = self.policy_enforcer.validate(&action.skill, complexity);
                     match decision {
                         PolicyDecision::Denied { reason } => {
                             self.emit(AgentEvent::TaskFailed {
@@ -141,10 +141,7 @@ impl AgentLoop {
                         PolicyDecision::RequiresConfirmation { skill } => {
                             self.emit(AgentEvent::ConfirmationRequired {
                                 skill: skill.clone(),
-                                reason: format!(
-                                    "Skill '{}' requires user confirmation",
-                                    skill
-                                ),
+                                reason: format!("Skill '{}' requires user confirmation", skill),
                             });
                         }
                         PolicyDecision::Allowed => {}
@@ -156,10 +153,7 @@ impl AgentLoop {
                     self.emit(AgentEvent::SkillCompleted {
                         skill: action.skill.clone(),
                         success: true,
-                        summary: format!(
-                            "Executed {} with {:?}",
-                            action.skill, action.parameters
-                        ),
+                        summary: format!("Executed {} with {:?}", action.skill, action.parameters),
                     });
                     ctx.add_message("assistant", &response.content);
                     if response.content.contains("DONE") {
@@ -232,17 +226,13 @@ impl AgentLoop {
                 self.emit(AgentEvent::TaskFailed {
                     error: "Budget exceeded mid-task".into(),
                 });
-                return Err(LlmError::ModelUnavailable("budget exceeded mid-task".into()));
+                return Err(LlmError::ModelUnavailable(
+                    "budget exceeded mid-task".into(),
+                ));
             }
 
             let (response, _cached) = router
-                .call_with_fallback_cached(
-                    http,
-                    backend,
-                    prompt,
-                    system_prompt,
-                    &cache_breakpoints,
-                )
+                .call_with_fallback_cached(http, backend, prompt, system_prompt, &cache_breakpoints)
                 .await?;
 
             let tier = complexity_to_budget_tier(complexity);
@@ -279,7 +269,9 @@ impl AgentLoop {
                     let decision = self.policy_enforcer.validate(&action.skill, complexity);
                     match decision {
                         PolicyDecision::Denied { reason } => {
-                            self.emit(AgentEvent::TaskFailed { error: reason.clone() });
+                            self.emit(AgentEvent::TaskFailed {
+                                error: reason.clone(),
+                            });
                             return Err(LlmError::ModelUnavailable(reason));
                         }
                         PolicyDecision::RequiresConfirmation { skill } => {

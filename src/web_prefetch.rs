@@ -194,9 +194,7 @@ pub async fn search(
 
     let results = match &config.provider {
         SearchProvider::None => Vec::new(),
-        SearchProvider::Brave { api_key } => {
-            search_brave(client, query, api_key, config).await
-        }
+        SearchProvider::Brave { api_key } => search_brave(client, query, api_key, config).await,
         SearchProvider::SearXNG { base_url } => {
             search_searxng(client, query, base_url, config).await
         }

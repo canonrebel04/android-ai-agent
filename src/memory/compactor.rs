@@ -28,7 +28,7 @@ pub struct CompactorConfig {
 impl Default for CompactorConfig {
     fn default() -> Self {
         Self {
-            max_chars: 100_000,       // ~25K tokens
+            max_chars: 100_000, // ~25K tokens
             soft_trim_ratio: 0.3,
             hard_clear_ratio: 0.5,
             keep_last_assistants: 3,
@@ -40,9 +40,9 @@ impl Default for CompactorConfig {
 /// A conversation turn.
 #[derive(Debug, Clone)]
 pub struct Turn {
-    pub role: String,      // "user", "assistant", "tool"
+    pub role: String, // "user", "assistant", "tool"
     pub content: String,
-    pub index: usize,      // Position in conversation (0 = first)
+    pub index: usize, // Position in conversation (0 = first)
 }
 
 /// Result of compacting conversation turns.
@@ -162,7 +162,11 @@ mod tests {
     use super::*;
 
     fn make_turn(role: &str, content: &str, index: usize) -> Turn {
-        Turn { role: role.to_string(), content: content.to_string(), index }
+        Turn {
+            role: role.to_string(),
+            content: content.to_string(),
+            index,
+        }
     }
 
     #[test]
@@ -171,7 +175,10 @@ mod tests {
             make_turn("user", "hello", 0),
             make_turn("assistant", "hi there", 1),
         ];
-        let config = CompactorConfig { max_chars: 1000, ..Default::default() };
+        let config = CompactorConfig {
+            max_chars: 1000,
+            ..Default::default()
+        };
         let result = compact(&turns, &config);
         assert_eq!(result.turns_pruned, 0);
         assert_eq!(result.turns.len(), 2);
@@ -185,7 +192,11 @@ mod tests {
             make_turn("tool", &big_content, 1),
             make_turn("assistant", "done", 2),
         ];
-        let config = CompactorConfig { max_chars: 5000, min_prunable_chars: 100, ..Default::default() };
+        let config = CompactorConfig {
+            max_chars: 5000,
+            min_prunable_chars: 100,
+            ..Default::default()
+        };
         let result = compact(&turns, &config);
         assert!(result.turns_pruned > 0);
         assert!(result.total_chars <= 5000 + 200); // allow some overhead
@@ -200,7 +211,11 @@ mod tests {
             make_turn("tool", &big, 1),
             make_turn("assistant", "ok", 2),
         ];
-        let config = CompactorConfig { max_chars: 1000, min_prunable_chars: 100, ..Default::default() };
+        let config = CompactorConfig {
+            max_chars: 1000,
+            min_prunable_chars: 100,
+            ..Default::default()
+        };
         let result = compact(&turns, &config);
         assert_eq!(result.turns[0].content, msg);
     }

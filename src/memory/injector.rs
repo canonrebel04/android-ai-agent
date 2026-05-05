@@ -19,7 +19,7 @@ pub struct InjectorConfig {
 impl Default for InjectorConfig {
     fn default() -> Self {
         Self {
-            max_chars: 3000,     // ~750 tokens at 4 chars/token
+            max_chars: 3000, // ~750 tokens at 4 chars/token
             max_facts: 15,
             min_trust: 0.4,
         }
@@ -56,7 +56,8 @@ pub fn assemble_context(
             if xml.len() + snippet.snippet.len() + 40 > config.max_chars {
                 break;
             }
-            xml.push_str(&format!("    <result query=\"{}\">{}</result>\n",
+            xml.push_str(&format!(
+                "    <result query=\"{}\">{}</result>\n",
                 xml_escape(&snippet.query),
                 xml_escape(&snippet.snippet),
             ));
@@ -99,7 +100,10 @@ pub fn assemble_context(
 
     // ── Session summary (cross-session context) ──
     if let Some(summary) = session_summary {
-        let line = format!("  <recent_work>{}</recent_work>\n", xml_escape(&truncate_str(summary, 300)));
+        let line = format!(
+            "  <recent_work>{}</recent_work>\n",
+            xml_escape(&truncate_str(summary, 300))
+        );
         if xml.len() + line.len() <= config.max_chars {
             xml.push_str(&line);
         }
@@ -156,9 +160,7 @@ fn truncate_str(s: &str, max_chars: usize) -> String {
     if s.len() <= max_chars {
         s.to_string()
     } else {
-        let boundary = s[..max_chars]
-            .rfind(' ')
-            .unwrap_or(max_chars);
+        let boundary = s[..max_chars].rfind(' ').unwrap_or(max_chars);
         format!("{}...", &s[..boundary])
     }
 }
@@ -227,9 +229,18 @@ mod tests {
 
     #[test]
     fn test_char_limit_respected() {
-        let config = InjectorConfig { max_chars: 100, ..Default::default() };
+        let config = InjectorConfig {
+            max_chars: 100,
+            ..Default::default()
+        };
         let facts: Vec<_> = (0..10)
-            .map(|i| make_fact(i as i64, &format!("fact number {} with lots of content", i), 0.9))
+            .map(|i| {
+                make_fact(
+                    i as i64,
+                    &format!("fact number {} with lots of content", i),
+                    0.9,
+                )
+            })
             .collect();
 
         let ctx = assemble_context(&facts, &[], None, &config);
