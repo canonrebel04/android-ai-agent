@@ -6,6 +6,13 @@ use crate::memory::fact_store::{Fact, FactStore, ProbeResult};
 use once_cell::sync::Lazy;
 use regex::Regex;
 use std::collections::HashSet;
+use once_cell::sync::Lazy;
+
+static REPO_RE: Lazy<Regex> = Lazy::new(|| Regex::new(r"\b([a-zA-Z0-9][-a-zA-Z0-9]*/[a-zA-Z0-9][-_.a-zA-Z0-9]*)\b").unwrap());
+static PROPER_RE: Lazy<Regex> = Lazy::new(|| Regex::new(r"\b([A-Z][a-z]+(?:\s+[A-Z][a-z]+)+)\b").unwrap());
+static CAP_RE: Lazy<Regex> = Lazy::new(|| Regex::new(r"(?:^|(?:\.|\?|!|\n)\s+|[^a-zA-Z])([A-Z][a-zA-Z]{2,})\b").unwrap());
+static TECH_RE: Lazy<Regex> = Lazy::new(|| Regex::new(r"\b([a-zA-Z][-a-zA-Z0-9]*[-.][a-zA-Z][-a-zA-Z0-9.]*)\b").unwrap());
+static VERSION_RE: Lazy<Regex> = Lazy::new(|| Regex::new(r"\b(v?\d+\.\d+(?:\.\d+)?)\b").unwrap());
 
 static REPO_RE: Lazy<Regex> = Lazy::new(|| Regex::new(r"\b([a-zA-Z0-9][-a-zA-Z0-9]*/[a-zA-Z0-9][-_.a-zA-Z0-9]*)\b").unwrap());
 static PROPER_RE: Lazy<Regex> = Lazy::new(|| Regex::new(r"\b([A-Z][a-z]+(?:\s+[A-Z][a-z]+)+)\b").unwrap());
