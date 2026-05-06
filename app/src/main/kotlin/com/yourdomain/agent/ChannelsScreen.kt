@@ -330,7 +330,7 @@ private fun VoiceCard() {
                     }
                 }
                 Switch(
-                    modifier = Modifier.semantics { contentDescription = "Enable Slack" },
+                    modifier = Modifier.semantics { contentDescription = "Enable Voice Control" },
                     checked = enabled,
                     onCheckedChange = { enabled = it },
                     colors = SwitchDefaults.colors(
@@ -417,7 +417,7 @@ private fun GatewayCard() {
                     }
                 }
                 Switch(
-                    modifier = Modifier.semantics { contentDescription = "Enable Email (SMTP/IMAP)" },
+                    modifier = Modifier.semantics { contentDescription = "Enable Gateway" },
                     checked = enabled,
                     onCheckedChange = { enabled = it },
                     colors = SwitchDefaults.colors(
