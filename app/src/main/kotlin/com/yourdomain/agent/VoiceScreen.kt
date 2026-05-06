@@ -122,7 +122,11 @@ fun VoiceScreen() {
                 )
             }
 
-            items(models.filter { it.id.startsWith("whisper") }) { model ->
+            // ⚡ Bolt: Provide a unique key to prevent redundant UI recomposition.
+            items(
+                items = models.filter { it.id.startsWith("whisper") },
+                key = { it.id }
+            ) { model ->
                 ModelRow(
                     model = model,
                     isRecommended = when (model.id) {
@@ -149,7 +153,11 @@ fun VoiceScreen() {
                 )
             }
 
-            items(models.filter { it.id.startsWith("piper") }) { model ->
+            // ⚡ Bolt: Provide a unique key to prevent redundant UI recomposition.
+            items(
+                items = models.filter { it.id.startsWith("piper") },
+                key = { it.id }
+            ) { model ->
                 ModelRow(
                     model = model,
                     isRecommended = when (model.id) {

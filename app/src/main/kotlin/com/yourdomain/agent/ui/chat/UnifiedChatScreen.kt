@@ -79,7 +79,11 @@ fun UnifiedChatScreen(
                 verticalArrangement = Arrangement.spacedBy(16.dp),
                 contentPadding = PaddingValues(top = 16.dp, bottom = 100.dp)
             ) {
-                itemsIndexed(messages) { index, message ->
+                // ⚡ Bolt: Adding stable keys to LazyColumn items prevents unnecessary recompositions when messages are added or rearranged.
+                itemsIndexed(
+                    items = messages,
+                    key = { _, message -> message.id }
+                ) { index, message ->
                     AnimatedMessageItem(message, index)
                 }
             }
