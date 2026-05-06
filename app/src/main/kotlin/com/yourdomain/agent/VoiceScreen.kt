@@ -15,6 +15,8 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.semantics
 
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -36,6 +38,7 @@ fun VoiceScreen() {
                 title = { Text("🎙 Voice Mode") },
                 actions = {
                     Switch(
+                        modifier = Modifier.semantics { contentDescription = "Voice Mode Toggle" },
                         checked = voiceEnabled,
                         onCheckedChange = {
                             voiceEnabled = it
