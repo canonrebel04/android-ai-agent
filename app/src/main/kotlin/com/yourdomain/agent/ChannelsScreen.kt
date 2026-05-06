@@ -39,6 +39,8 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.semantics
 import android.content.Intent
 
 // ── Screen ────────────────────────────────────────────────────────────────────
@@ -128,6 +130,7 @@ private fun TelegramCard() {
                     }
                 }
                 Switch(
+                    modifier = Modifier.semantics { contentDescription = "Enable Telegram Bot" },
                     checked = enabled,
                     onCheckedChange = {
                         enabled = it
@@ -247,6 +250,7 @@ private fun WhatsAppCard() {
                     }
                 }
                 Switch(
+                    modifier = Modifier.semantics { contentDescription = "Enable WhatsApp" },
                     checked = enabled,
                     onCheckedChange = { enabled = it },
                     colors = SwitchDefaults.colors(
@@ -326,6 +330,7 @@ private fun VoiceCard() {
                     }
                 }
                 Switch(
+                    modifier = Modifier.semantics { contentDescription = "Enable Slack" },
                     checked = enabled,
                     onCheckedChange = { enabled = it },
                     colors = SwitchDefaults.colors(
@@ -412,6 +417,7 @@ private fun GatewayCard() {
                     }
                 }
                 Switch(
+                    modifier = Modifier.semantics { contentDescription = "Enable Email (SMTP/IMAP)" },
                     checked = enabled,
                     onCheckedChange = { enabled = it },
                     colors = SwitchDefaults.colors(

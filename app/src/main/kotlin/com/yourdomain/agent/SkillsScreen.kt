@@ -36,6 +36,8 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.semantics
 
 // ── Data model ────────────────────────────────────────────────────────────────
 
@@ -206,6 +208,7 @@ private fun SkillCard(
                     modifier = Modifier.weight(1f),
                 )
                 Switch(
+                    modifier = Modifier.semantics { contentDescription = "Toggle ${skill.name} skill" },
                     checked = checked,
                     onCheckedChange = { newValue ->
                         checked = newValue

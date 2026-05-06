@@ -195,9 +195,7 @@ fn extract_urls(text: &str) -> Vec<String> {
 
 /// Fetch lightweight page previews for URLs.
 async fn fetch_url_previews(client: &Client, urls: &[String]) -> Vec<WebSnippet> {
-    let mut snippets = Vec::new();
-
-    for url in urls.iter().take(3) {
+    let futures = urls.iter().take(3).map(|url| async move {
         // Fetch first 4KB of page
         let resp = match client
             .get(url)
@@ -206,13 +204,13 @@ async fn fetch_url_previews(client: &Client, urls: &[String]) -> Vec<WebSnippet>
             .await
         {
             Ok(r) => r,
-            Err(_) => continue,
+            Err(_) => return None,
         };
 
         // Read up to 4KB
         let body = match resp.text().await {
             Ok(b) => b,
-            Err(_) => continue,
+            Err(_) => return None,
         };
 
         // Extract title + first meaningful text
@@ -220,14 +218,14 @@ async fn fetch_url_previews(client: &Client, urls: &[String]) -> Vec<WebSnippet>
         let text = strip_html_tags(&body);
         let preview = truncate_url_preview(&text, 200);
 
-        snippets.push(WebSnippet {
+        Some(WebSnippet {
             query: "url_fetch".to_string(),
             snippet: format!("[URL] {} - {}", title, preview),
             url: url.clone(),
-        });
-    }
+        })
+    });
 
-    snippets
+    futures_util::future::join_all(futures).await.into_iter().flatten().collect()
 }
 
 fn extract_html_title(html: &str) -> Option<String> {
