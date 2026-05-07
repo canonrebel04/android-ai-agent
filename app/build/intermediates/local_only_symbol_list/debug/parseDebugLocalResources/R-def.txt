@@ -1,0 +1,14 @@
+R_DEF: Internal format may change without notice
+local
+drawable floating_agent_bg
+drawable floating_pill_bg
+id agentAction
+id agentStatus
+id floatingRoot
+layout floating_agent
+mipmap ic_launcher
+mipmap ic_launcher_round
+string accessibility_service_description
+string app_name
+style Theme.Agent
+xml accessibility_service_config

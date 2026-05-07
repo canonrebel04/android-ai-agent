@@ -64,16 +64,14 @@ class NotificationMonitorService : NotificationListenerService() {
         // Check if this is a monitored app
         if (!isMonitoredApp(packageName)) return
 
-        // Check monitored contacts
-        val monitoredContacts = prefs.getStringSet("monitoredContacts", null)
-        if (monitoredContacts.isNullOrEmpty()) return
-
-        // Extract sender and check if monitored
+        // Extract sender
         val sender = extractSender(title, text, packageName) ?: return
-        if (!isMonitoredContact(sender, monitoredContacts)) return
 
-        // Broadcast notification
-        broadcastNotification(sender, text, packageName)
+        // Check if sender is monitored
+        if (!isMonitoredContact(sender)) return
+
+        // Notify agent
+        notifyAgent(sender, text, packageName)
     }
 
     override fun onNotificationRemoved(sbn: StatusBarNotification?) {
@@ -85,37 +83,107 @@ class NotificationMonitorService : NotificationListenerService() {
     private fun isMonitoredApp(packageName: String): Boolean {
         val monitorWeChat = prefs.getBoolean("monitorWeChat", true)
         val monitorQQ = prefs.getBoolean("monitorQQ", true)
+        val monitorWeibo = prefs.getBoolean("monitorWeibo", true)
+        val monitorDingTalk = prefs.getBoolean("monitorDingTalk", true)
+        val monitorWhatsApp = prefs.getBoolean("monitorWhatsApp", true)
+        val monitorTelegram = prefs.getBoolean("monitorTelegram", true)
 
-        if (monitorWeChat && packageName == WECHAT_PACKAGE) return true
-        if (monitorQQ && packageName == QQ_PACKAGE) return true
-        if (packageName == WEIBO_PACKAGE) return true
-        if (packageName == DINGTALK_PACKAGE) return true
-        if (packageName == WHATSAPP_PACKAGE) return true
-        if (packageName == TELEGRAM_PACKAGE) return true
-
-        return false
+        return when (packageName) {
+            WECHAT_PACKAGE -> monitorWeChat
+            QQ_PACKAGE -> monitorQQ
+            WEIBO_PACKAGE -> monitorWeibo
+            DINGTALK_PACKAGE -> monitorDingTalk
+            WHATSAPP_PACKAGE -> monitorWhatsApp
+            TELEGRAM_PACKAGE -> monitorTelegram
+            else -> false
+        }
     }
 
     // ── Sender extraction ─────────────────────────────────────
 
     private fun extractSender(title: String, text: String, packageName: String): String? {
-        when (packageName) {
-            WECHAT_PACKAGE -> {
-                // WeChat: title is usually the sender or group name
-                if (title.isNotEmpty() && title != "微信") return title
-                // Some ROMs hide details; title may be "微信", try parsing from text
-                // Common format: "sender: message" or "sender：message"
-                parseWeChatSender(text)?.let { return it }
-            }
-            QQ_PACKAGE -> {
-                // QQ: title is usually the sender
-                if (title.isNotEmpty() && title != "QQ") return title
-            }
+        return when (packageName) {
+            WECHAT_PACKAGE -> extractWeChatSender(title, text)
+            QQ_PACKAGE -> extractQQSender(title, text)
+            WEIBO_PACKAGE -> extractWeiboSender(title, text)
+            DINGTALK_PACKAGE -> extractDingTalkSender(title, text)
+            WHATSAPP_PACKAGE -> extractWhatsAppSender(title, text)
+            TELEGRAM_PACKAGE -> extractTelegramSender(title, text)
+            else -> null
         }
+    }
 
-        // Generic fallback: use title if it looks like a person name (short)
-        if (title.isNotEmpty() && title.length < 20) return title
+    private fun extractWeChatSender(title: String, text: String): String? {
+        // WeChat: title is usually the sender or group name
+        if (title.isNotEmpty() && title != "微信") return title
+        // Some ROMs hide details; title may be "微信", try parsing from text
+        // Common format: "sender: message" or "sender：message"
+        return parseWeChatSender(text)
+    }
 
+    private fun extractQQSender(title: String, text: String): String? {
+        // QQ: title is usually the sender
+        if (title.isNotEmpty() && title != "QQ") return title
+        // Try to parse from text if title is generic
+        // Common format: "sender: message" or "sender：message"
+        var colonIdx = text.indexOf(':')
+        if (colonIdx == -1) colonIdx = text.indexOf('：')
+        if (colonIdx > 0) {
+            val sender = text.substring(0, colonIdx).trim()
+            if (sender.isNotEmpty() && sender.length < 30) return sender
+        }
+        return null
+    }
+
+    private fun extractWeiboSender(title: String, text: String): String? {
+        // Weibo: title is usually the username
+        if (title.isNotEmpty() && title != "微博") return title
+        // Try to parse from text
+        var colonIdx = text.indexOf(':')
+        if (colonIdx == -1) colonIdx = text.indexOf('：')
+        if (colonIdx > 0) {
+            val sender = text.substring(0, colonIdx).trim()
+            if (sender.isNotEmpty() && sender.length < 30) return sender
+        }
+        return null
+    }
+
+    private fun extractDingTalkSender(title: String, text: String): String? {
+        // DingTalk: title is usually the sender or group name
+        if (title.isNotEmpty() && title != "钉钉") return title
+        // Try to parse from text
+        var colonIdx = text.indexOf(':')
+        if (colonIdx == -1) colonIdx = text.indexOf('：')
+        if (colonIdx > 0) {
+            val sender = text.substring(0, colonIdx).trim()
+            if (sender.isNotEmpty() && sender.length < 30) return sender
+        }
+        return null
+    }
+
+    private fun extractWhatsAppSender(title: String, text: String): String? {
+        // WhatsApp: title is usually the sender name
+        if (title.isNotEmpty() && title != "WhatsApp") return title
+        // Try to parse from text
+        var colonIdx = text.indexOf(':')
+        if (colonIdx == -1) colonIdx = text.indexOf('：')
+        if (colonIdx > 0) {
+            val sender = text.substring(0, colonIdx).trim()
+            if (sender.isNotEmpty() && sender.length < 30) return sender
+        }
+        return null
+    }
+
+    private fun extractTelegramSender(title: String, text: String): String? {
+        // Telegram: title is usually the sender or group name
+        if (title.isNotEmpty() && title != "Telegram") return title
+        // Try to parse from text
+        var colonIdx = text.indexOf(':')
+        if (colonIdx == -1) colonIdx = text.indexOf('：')
+        if (colonIdx > 0) {
+            val sender = text.substring(0, colonIdx).trim()
+            if (sender.isNotEmpty() && sender.length < 30) return sender
+        }
         return null
     }
 
@@ -140,16 +208,25 @@ class NotificationMonitorService : NotificationListenerService() {
 
     // ── Contact matching ──────────────────────────────────────
 
-    private fun isMonitoredContact(sender: String, monitoredContacts: Set<String>): Boolean {
+    private fun isMonitoredContact(sender: String, monitoredContacts: Set<String>?): Boolean {
+        if (monitoredContacts.isNullOrEmpty()) return false
         for (contact in monitoredContacts) {
             if (sender.contains(contact) || contact.contains(sender)) return true
         }
         return false
     }
 
+    private fun isMonitoredContact(sender: String): Boolean {
+        val monitoredContacts = prefs.getStringSet("monitoredContacts", null)
+        return isMonitoredContact(sender, monitoredContacts)
+    }
+
     // ── Broadcast ─────────────────────────────────────────────
 
-    private fun broadcastNotification(sender: String, content: String, packageName: String) {
+    private fun notifyAgent(sender: String, content: String, packageName: String) {
+        // Add message to the global queue
+        GlobalMessageQueue.addMessage(sender, content, packageName)
+
         val intent = Intent(BROADCAST_ACTION).apply {
             setPackage(this@NotificationMonitorService.packageName)
             putExtra("sender", sender)
@@ -162,6 +239,10 @@ class NotificationMonitorService : NotificationListenerService() {
         val maskedSender = maskSensitiveInfo(sender)
         val maskedContent = maskSensitiveInfo(content)
         Log.d(TAG, "Notification captured: $maskedSender — $maskedContent")
+    }
+
+    private fun broadcastNotification(sender: String, content: String, packageName: String) {
+        notifyAgent(sender, content, packageName)
     }
 
     // ── Privacy masking ───────────────────────────────────────

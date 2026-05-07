@@ -1,5 +1,7 @@
 package com.yourdomain.agent
 
+import android.content.Context
+import android.content.Intent
 import android.util.Log
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
@@ -20,13 +22,21 @@ data class AgentState(
     val monthlyCost: String = "$0.00"
 )
 
-class AgentViewModel : ViewModel() {
+class AgentViewModel(private val context: Context? = null) : ViewModel(), MessageQueueListener {
     private val _state = MutableStateFlow(AgentState())
     val state: StateFlow<AgentState> = _state
 
     init {
         refreshHistory()
         refreshBudget()
+        // Register as a listener for message queue changes
+        GlobalMessageQueue.addListener(this)
+    }
+
+    override fun onCleared() {
+        super.onCleared()
+        // Unregister from message queue
+        GlobalMessageQueue.removeListener(this)
     }
 
     fun initAgent(openrouterKey: String) {
@@ -93,7 +103,7 @@ class AgentViewModel : ViewModel() {
             _state.value = _state.value.copy(monthlyCost = cost)
         }
     }
-...
+
     fun stopTask() { _state.value = _state.value.copy(status = "idle") }
 
     fun refreshStatus() {
@@ -114,5 +124,114 @@ class AgentViewModel : ViewModel() {
             RustBridge.nativeConfirm(approved)
             _state.value = _state.value.copy(pendingConfirmation = null, status = "running")
         }}
+    }
+
+    // MessageQueueListener callbacks
+    override fun onMessageAdded(message: MessageItem) {
+        // Update state to reflect new message count
+        updateMessageQueueState()
+    }
+
+    override fun onMessageProcessed(message: MessageItem) {
+        updateMessageQueueState()
+    }
+
+    override fun onMessageCleared() {
+        updateMessageQueueState()
+    }
+
+    override fun onAllMessagesProcessed() {
+        updateMessageQueueState()
+    }
+
+    private fun updateMessageQueueState() {
+        viewModelScope.launch {
+            _state.value = _state.value.copy(
+                // Keep existing state but this triggers recomposition
+            )
+        }
+    }
+
+    // Message queue processing methods
+    fun processNextNotification(): Boolean {
+        val unprocessed = GlobalMessageQueue.getUnprocessedMessages()
+        if (unprocessed.isEmpty()) {
+            return false
+        }
+        
+        val message = unprocessed.first()
+        // Process the message (mark as processed and potentially send to agent)
+        GlobalMessageQueue.markAsProcessed(message)
+        
+        // Send the message content to the agent for processing
+        sendMessageToAgent(message)
+        
+        return true
+    }
+
+    fun processAllNotifications() {
+        val unprocessed = GlobalMessageQueue.getUnprocessedMessages()
+        for (message in unprocessed) {
+            sendMessageToAgent(message)
+            GlobalMessageQueue.markAsProcessed(message)
+        }
+    }
+
+    private fun sendMessageToAgent(message: MessageItem) {
+        val userMsg = ChatMessage(
+            id = "notif_${message.timestamp}_${message.sender.hashCode()}",
+            role = "user",
+            content = "Notification from ${message.sender}: ${message.content}",
+            timestamp = message.timestamp
+        )
+        _state.value = _state.value.copy(
+            chatMessages = _state.value.chatMessages + userMsg,
+            status = "running"
+        )
+
+        viewModelScope.launch {
+            val response = withContext(Dispatchers.IO) {
+                val json = "{\"id\":\"${userMsg.id}\",\"role\":\"user\",\"content\":\"${userMsg.content}\",\"timestamp\":${userMsg.timestamp}}"
+                RustBridge.sendMessage(json)
+            }
+
+            val agentMsg = ChatMessage(
+                id = "${userMsg.id}_response",
+                role = "assistant",
+                content = response,
+                timestamp = System.currentTimeMillis()
+            )
+            _state.value = _state.value.copy(
+                chatMessages = _state.value.chatMessages + agentMsg,
+                status = "idle"
+            )
+            refreshBudget()
+        }
+    }
+
+    // Floating overlay control methods
+    fun showFloatingOverlay() {
+        context?.let { ctx ->
+            val intent = Intent(ctx, FloatingAgentOverlay::class.java).apply {
+                putExtra("status", _state.value.status)
+                putExtra("action", _state.value.currentTask)
+            }
+            if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.O) {
+                ctx.startForegroundService(intent)
+            } else {
+                ctx.startService(intent)
+            }
+        }
+    }
+
+    fun updateFloatingOverlay(status: String, action: String) {
+        context?.let { ctx ->
+            val intent = Intent(ctx, FloatingAgentOverlay::class.java).apply {
+                putExtra("status", status)
+                putExtra("action", action)
+                action = "UPDATE_OVERLAY"
+            }
+            ctx.startService(intent)
+        }
     }
 }

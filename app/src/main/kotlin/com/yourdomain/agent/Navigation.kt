@@ -109,7 +109,10 @@ fun AgentNavigation() {
                     composable(Screen.Skills.name) { SkillsScreen() }
                     composable(Screen.Channels.name) { ChannelsScreen() }
                     composable(Screen.Memory.name) { MemoryScreen() }
-                    composable(Screen.Settings.name) { SettingsScreen() }
+                    composable(Screen.Settings.name) { 
+                        val viewModel = viewModel<AgentViewModel>()
+                        SettingsScreen(viewModel = viewModel)
+                    }
                     composable(Screen.Terminal.name) { TerminalScreen() }
                 }
             }

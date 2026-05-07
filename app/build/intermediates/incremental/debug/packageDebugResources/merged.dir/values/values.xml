@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="accessibility_service_description">Hermes Agent accessibility service for monitoring and assistance</string>
+    <string name="app_name">Agent</string>
+    <style name="Theme.Agent" parent="android:Theme.Material.Light.NoActionBar"/>
+</resources>

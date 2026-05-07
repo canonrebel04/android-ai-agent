@@ -50,7 +50,7 @@ class FloatingAgentOverlay : Service() {
             val preview = if (content.length > 24) content.take(24) + "…" else content
 
             updateStatus("◉ Alert", sender)
-            updateAction(preview)
+            updateOverlay("◉ Alert", preview)
 
             Log.d(TAG, "Overlay updated from broadcast: $sender — $preview")
         }
@@ -91,7 +91,7 @@ class FloatingAgentOverlay : Service() {
     override fun onBind(intent: Intent?): IBinder? = null
 
     override fun onDestroy() {
-        hide()
+        hideOverlay()
         try {
             unregisterReceiver(notificationReceiver)
         } catch (_: IllegalArgumentException) {
@@ -146,14 +146,15 @@ class FloatingAgentOverlay : Service() {
     }
 
     /**
-     * Update the right-hand action / task label.
+     * Update the overlay with new status and action text.
      */
-    fun updateAction(action: String) {
+    fun updateOverlay(status: String, action: String) {
+        statusText?.text = status
         actionText?.text = action
     }
 
     /** Remove the overlay from the WindowManager. */
-    fun hide() {
+    fun hideOverlay() {
         overlayView?.let {
             windowManager.removeView(it)
             overlayView = null
