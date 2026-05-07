@@ -27,6 +27,7 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -37,6 +38,11 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 
 // ── Data model ────────────────────────────────────────────────────────────────
+
+data class ModelPricing(
+    val inputPrice: Double,
+    val outputPrice: Double,
+)
 
 enum class ModelTier(val label: String, val emoji: String) {
     TRIVIAL("Trivial", "\uD83D\uDC22"),
@@ -86,6 +92,30 @@ fun ModelsScreen() {
         )
     }
 
+    // State for model pricing data
+    var modelPricingMap by remember { mutableStateOf(mapOf<String, ModelPricing>()) }
+
+    // Fetch pricing for all models when screen loads
+    LaunchedEffect(Unit) {
+        val allModels = tiers.flatMap { tier ->
+            listOf(tier.primaryModel) + tier.fallbackModels
+        }.distinct()
+
+        allModels.forEach { modelId ->
+            try {
+                val pricingString = RustBridge.getModelPricing(modelId)
+                val parts = pricingString.split("|")
+                if (parts.size == 2) {
+                    val inputPrice = parts[0].toDoubleOrNull() ?: 0.0
+                    val outputPrice = parts[1].toDoubleOrNull() ?: 0.0
+                    modelPricingMap = modelPricingMap + (modelId to ModelPricing(inputPrice, outputPrice))
+                }
+            } catch (e: Exception) {
+                // Silently handle errors - pricing will just show as unavailable
+            }
+        }
+    }
+
     Scaffold(
         topBar = {
             TopAppBar(
@@ -114,7 +144,7 @@ fun ModelsScreen() {
             verticalArrangement = Arrangement.spacedBy(12.dp),
         ) {
             items(tiers, key = { it.tier.name }) { config ->
-                TierCard(config)
+                TierCard(config, modelPricingMap)
             }
         }
     }
@@ -123,7 +153,7 @@ fun ModelsScreen() {
 // ── Tier Card ─────────────────────────────────────────────────────────────────
 
 @Composable
-private fun TierCard(config: ModelTierConfig) {
+private fun TierCard(config: ModelTierConfig, modelPricingMap: Map<String, ModelPricing>) {
     var expanded by remember { mutableStateOf(false) }
 
     Card(
@@ -179,23 +209,17 @@ private fun TierCard(config: ModelTierConfig) {
 
             Spacer(modifier = Modifier.height(8.dp))
 
-            // ── Cost estimate ──
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                Text(
-                    text = "Cost: ",
-                    style = MaterialTheme.typography.bodySmall,
-                    fontWeight = FontWeight.SemiBold,
-                )
-                Text(
-                    text = config.costEstimate,
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                )
-            }
+            // ── Pricing info for primary model ──
+            ModelPricingInfo(
+                modelId = config.primaryModel,
+                pricing = modelPricingMap[config.primaryModel],
+                label = "Primary Model Pricing"
+            )
+
+            Spacer(modifier = Modifier.height(8.dp))
 
             // ── Fallback chips ──
             if (config.fallbackModels.isNotEmpty()) {
-                Spacer(modifier = Modifier.height(8.dp))
                 Text(
                     text = "Fallbacks:",
                     style = MaterialTheme.typography.labelSmall,
@@ -277,6 +301,36 @@ private fun TierCard(config: ModelTierConfig) {
                     )
                 }
             }
+        }
+    }
+}
+
+@Composable
+private fun ModelPricingInfo(
+    modelId: String,
+    pricing: ModelPricing?,
+    label: String = "Pricing",
+) {
+    Column {
+        Text(
+            text = "$label:",
+            style = MaterialTheme.typography.bodySmall,
+            fontWeight = FontWeight.SemiBold,
+        )
+        if (pricing != null) {
+            val inputPriceFormatted = String.format("$%.6f/1K tokens", pricing.inputPrice)
+            val outputPriceFormatted = String.format("$%.6f/1K tokens", pricing.outputPrice)
+            Text(
+                text = "Input: $inputPriceFormatted, Output: $outputPriceFormatted",
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+        } else {
+            Text(
+                text = "Pricing unavailable for $modelId",
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
         }
     }
 }

@@ -1,0 +1,20 @@
+#!/system/bin/sh
+# PRoot Binary Placeholder for ARM64 (aarch64)
+# This is a placeholder file. Replace it with the actual PRoot binary.
+#
+# To obtain the real binary:
+# 1. Download from Termux PRoot releases: https://github.com/termux/proot/releases
+# 2. Or build from source using Android NDK
+#
+# Expected binary: proot-aarch64 (rename to libproot.so)
+# Architecture: ARM 64-bit (aarch64)
+# Target: Android devices with ARM64 processors (most modern devices)
+#
+# After replacing this file:
+# chmod +x libproot.so
+# file libproot.so  # Should show: ELF 64-bit LSB shared object, ARM aarch64
+
+echo "ERROR: This is a placeholder for libproot.so (ARM64)"
+echo "Please replace this file with the actual PRoot binary for ARM64 architecture."
+echo "See README.md in the parent directory for download instructions."
+exit 1

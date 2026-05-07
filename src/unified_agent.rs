@@ -2,6 +2,7 @@
 //! Combines AgentLoop, SoulSystem, and MemoryManager into a high-level API for JNI.
 
 use crate::agent_loop::{AgentLoop, AgentLoopConfig};
+use crate::complexity_classifier::{classify, suggest_model};
 use crate::context_manager::ContextManager;
 use crate::http_client::HttpClient;
 use crate::memory_manager::MemoryManager;
@@ -53,6 +54,11 @@ impl UnifiedAgent {
 
         let mut loop_guard = self.agent_loop.lock().unwrap();
         let mut ctx_guard = self.context.lock().unwrap();
+
+        // Classify the prompt and log suggested model
+        let complexity = classify(&text);
+        let suggested = suggest_model(complexity);
+        println!("Prompt classified as {:?}, suggested model: {}", complexity, suggested);
 
         // Assemble system prompt with SOUL bootstrap
         let bootstrap = self.soul.assemble_prompt(

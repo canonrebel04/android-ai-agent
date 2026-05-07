@@ -27,6 +27,7 @@ class TelegramBotService : Service() {
     companion object {
         private const val TAG = "TelegramBot"
         private const val TELEGRAM_API = "https://api.telegram.org/bot"
+        const val EXTRA_BOT_TOKEN = "com.yourdomain.agent.EXTRA_BOT_TOKEN"
     }
 
     override fun onCreate() {
@@ -37,11 +38,18 @@ class TelegramBotService : Service() {
     }
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
+        intent?.getStringExtra(EXTRA_BOT_TOKEN)?.let { token ->
+            botToken = token
+            val prefs = getSharedPreferences("AgentPrefs", MODE_PRIVATE)
+            prefs.edit().putString("telegramToken", token).apply()
+        }
+
         if (botToken.isEmpty()) {
             Log.e(TAG, "No bot token configured")
             stopSelf()
             return START_NOT_STICKY
         }
+
         if (!isRunning) {
             isRunning = true
             startPolling()
@@ -88,79 +96,41 @@ class TelegramBotService : Service() {
 
     private suspend fun handleCommand(text: String, chatId: Long) {
         when {
+            text.startsWith("/start") -> {
+                sendMessage(chatId, "Welcome to AI Agent!\n\nUse /help to see available commands.")
+            }
             text.startsWith("/status") -> {
-                sendMessage(chatId, "◉ Agent Status: idle\nModel: claude-sonnet-4-6")
+                sendMessage(chatId, "Agent Status: idle\nModel: claude-sonnet-4-6")
             }
             text.startsWith("/stop") -> {
                 sendMessage(chatId, "Agent stopped.")
-                // Would call viewModel.stopTask() via binding
-            }
-            text.startsWith("/logs") -> {
-                val count = text.removePrefix("/logs").trim().toIntOrNull() ?: 10
-                sendMessage(chatId, "[log] Showing last $count entries")
-            }
-            text.startsWith("/model") -> {
-                val model = text.removePrefix("/model").trim()
-                if (model.isNotEmpty()) {
-                    sendMessage(chatId, "Model switched to: $model")
-                } else {
-                    sendMessage(chatId, "Current model: claude-sonnet-4-6")
-                }
-            }
-            text.startsWith("/skills") -> {
-                sendMessage(chatId, buildString {
-                    appendLine("Installed Skills:")
-                    appendLine("✅ screen_control — Tap, swipe, type")
-                    appendLine("✅ open_app — Launch apps")
-                    appendLine("✅ web_search — Local search engine")
-                    appendLine("✅ send_message — SMS/Telegram/WhatsApp")
-                    appendLine("✅ phone_call — Make calls (with confirmation)")
-                    appendLine("✅ calendar — Calendar CRUD")
-                    appendLine("❌ shell_cmd — Developer mode only")
-                })
-            }
-            text.startsWith("/memory") -> {
-                sendMessage(chatId, buildString {
-                    appendLine("User Profile: User")
-                    appendLine("Preferred model: claude-sonnet-4-6")
-                    appendLine("Recent: Sent email to Alex (2026-04-21)")
-                })
-            }
-            text.startsWith("/tier") -> {
-                val parts = text.removePrefix("/tier").trim().split(" ", limit = 2)
-                if (parts.size >= 2) {
-                    sendMessage(chatId, "Tier '${parts[0]}' set to model '${parts[1]}'")
-                } else {
-                    sendMessage(chatId, buildString {
-                        appendLine("Model Tiers:")
-                        appendLine("Trivial → gemini-flash-2.5")
-                        appendLine("Standard → mistral-small-3.2")
-                        appendLine("Complex → claude-sonnet-4-6")
-                        appendLine("Critical → claude-opus-4-6")
-                    })
-                }
             }
             text.startsWith("/help") -> {
                 sendMessage(chatId, buildString {
-                    appendLine("Commands:")
+                    appendLine("Available Commands:")
+                    appendLine("/start — Show welcome message")
                     appendLine("/status — Agent state")
                     appendLine("/stop — Halt running task")
-                    appendLine("/logs [n] — Last n log lines")
-                    appendLine("/model <name> — Switch model")
-                    appendLine("/skills — List skills")
-                    appendLine("/memory — Show MEMORY.md")
-                    appendLine("/tier <tier> <model> — Update routing tier")
+                    appendLine("/help — Show this help")
                     appendLine()
                     appendLine("Any other text = Execute as task")
                 })
             }
             else -> {
-                sendMessage(chatId, "▶ Starting task: $text")
-                // Would call viewModel.startTask(text) via binding
-                // And stream progress back via update messages
+                sendMessage(chatId, "Starting task: $text")
+                forwardTaskToViewModel(text)
                 delay(500)
-                sendMessage(chatId, "✓ Task completed: $text\nComplexity: Standard\nModel: claude-sonnet-4-6")
+                sendMessage(chatId, "Task completed: $text")
             }
+        }
+    }
+
+    private suspend fun forwardTaskToViewModel(task: String) {
+        try {
+            val viewModel = AgentViewModel()
+            viewModel.sendChatMessage(task)
+        } catch (e: Exception) {
+            Log.e(TAG, "Error forwarding task to ViewModel: ${e.message}")
         }
     }
 

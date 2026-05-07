@@ -10,6 +10,7 @@ pub mod identity;
 pub mod jni_exports;
 pub mod memory;
 pub mod memory_manager;
+pub mod model_pricing;
 pub mod model_router;
 pub mod prompt_cache;
 pub mod provider;

@@ -1,5 +1,7 @@
 package com.yourdomain.agent
 
+import android.content.Context
+import android.content.Intent
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -10,11 +12,14 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.text.KeyboardOptions
-import androidx.compose.ui.text.input.KeyboardType
+import androidx.compose.foundation.verticalScroll
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Send
+import androidx.compose.material3.Button
 import androidx.compose.material3.Divider
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
@@ -30,7 +35,10 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.input.KeyboardType
+import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
@@ -46,14 +54,18 @@ fun SettingsScreen() {
     var visionMode by remember { mutableStateOf(true) }
     var sendConfirmation by remember { mutableStateOf(true) }
     var deleteConfirmation by remember { mutableStateOf(true) }
-    var budgetAlertThreshold by remember { mutableStateOf("5.00") }
+
+    // Telegram configuration state
+    var telegramEnabled by remember { mutableStateOf(false) }
+    var telegramToken by remember { mutableStateOf("") }
+    val context = LocalContext.current
 
     Scaffold(
         topBar = {
             TopAppBar(
                 title = {
                     Column {
-                        Text("\u2699\uFE0F Settings")
+                        Text("Settings")
                         Text(
                             text = "Configure agent behaviour",
                             style = MaterialTheme.typography.labelMedium,
@@ -76,36 +88,36 @@ fun SettingsScreen() {
                 .padding(horizontal = 16.dp, vertical = 12.dp),
             verticalArrangement = Arrangement.spacedBy(4.dp),
         ) {
-            // ── Execution ──
-            SectionHeader("\u25B6\uFE0F Execution")
+            // Execution
+            SectionHeader("Execution")
 
             NumericSetting(
                 label = "Max Steps",
                 value = maxSteps,
                 onValueChange = { maxSteps = it },
-                helperText = "Maximum number of agent steps per task (1–200)",
+                helperText = "Maximum number of agent steps per task (1-200)",
             )
 
             NumericSetting(
                 label = "Action Delay (ms)",
                 value = actionDelay,
                 onValueChange = { actionDelay = it },
-                helperText = "Delay between consecutive actions (100–5000 ms)",
+                helperText = "Delay between consecutive actions (100-5000 ms)",
             )
 
             NumericSetting(
                 label = "Stall Timeout (s)",
                 value = stallTimeout,
                 onValueChange = { stallTimeout = it },
-                helperText = "Seconds before detecting a stalled task (30–600)",
+                helperText = "Seconds before detecting a stalled task (30-600)",
             )
 
             Spacer(modifier = Modifier.height(8.dp))
             SectionDivider()
             Spacer(modifier = Modifier.height(8.dp))
 
-            // ── Interaction ──
-            SectionHeader("\uD83D\uDC65 Interaction")
+            // Interaction
+            SectionHeader("Interaction")
 
             ToggleSetting(
                 label = "Vision Mode",
@@ -132,41 +144,56 @@ fun SettingsScreen() {
             SectionDivider()
             Spacer(modifier = Modifier.height(8.dp))
 
-            // ── Budget ──
-            SectionHeader("\uD83D\uDCB0 Budget")
+            // Telegram Configuration
+            SectionHeader("Telegram Bot")
 
-            // Current spend display
-            val currentCost by remember {
-                mutableStateOf(try { RustBridge.getMonthlyCost() } catch (_: Exception) { "0.00" })
-            }
-            val overBudget by remember {
-                mutableStateOf(try { RustBridge.isOverBudget() } catch (_: Exception) { false })
-            }
+            ToggleSetting(
+                label = "Enable Telegram Bot",
+                description = "Allow remote control via Telegram",
+                checked = telegramEnabled,
+                onCheckedChange = { telegramEnabled = it },
+            )
 
+            OutlinedTextField(
+                value = telegramToken,
+                onValueChange = { telegramToken = it },
+                label = { Text("Bot Token") },
+                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password),
+                visualTransformation = PasswordVisualTransformation(),
+                singleLine = true,
+                modifier = Modifier.fillMaxWidth(),
+            )
             Text(
-                text = "Current spend this month: $$currentCost",
-                style = MaterialTheme.typography.labelMedium,
-                color = if (overBudget)
-                    MaterialTheme.colorScheme.error
-                else
-                    MaterialTheme.colorScheme.onSurfaceVariant,
-                modifier = Modifier.padding(bottom = 8.dp),
+                text = "Enter your Telegram bot token from @BotFather",
+                style = MaterialTheme.typography.labelSmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                modifier = Modifier.padding(start = 4.dp, top = 2.dp, bottom = 12.dp),
             )
 
-            NumericSetting(
-                label = "Budget Alert Threshold ($)",
-                value = budgetAlertThreshold,
-                onValueChange = { newValue ->
-                    budgetAlertThreshold = newValue
-                    try { RustBridge.setBudgetThreshold(newValue) } catch (_: Exception) {}
+            Button(
+                onClick = {
+                    if (telegramEnabled && telegramToken.isNotBlank()) {
+                        val intent = Intent(context, TelegramBotService::class.java).apply {
+                            putExtra(TelegramBotService.EXTRA_BOT_TOKEN, telegramToken)
+                        }
+                        val prefs = context.getSharedPreferences("AgentPrefs", Context.MODE_PRIVATE)
+                        prefs.edit().putString("telegramToken", telegramToken).apply()
+                        prefs.edit().putBoolean("telegramEnabled", true).apply()
+                        context.startService(intent)
+                    }
                 },
-                helperText = "Receive an alert when spending exceeds this amount",
-            )
+                modifier = Modifier.fillMaxWidth(),
+                enabled = telegramEnabled && telegramToken.isNotBlank()
+            ) {
+                Icon(Icons.Default.Send, contentDescription = "Start")
+                Spacer(modifier = Modifier.width(8.dp))
+                Text("Start Telegram Bot")
+            }
         }
     }
 }
 
-// ── Reusable components ───────────────────────────────────────────────────────
+// Reusable components
 
 @Composable
 private fun SectionHeader(title: String) {
@@ -199,7 +226,6 @@ private fun NumericSetting(
         OutlinedTextField(
             value = value,
             onValueChange = { newValue ->
-                // Only allow numeric input
                 if (newValue.all { it.isDigit() || it == '.' }) {
                     onValueChange(newValue)
                 }

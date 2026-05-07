@@ -8,7 +8,7 @@ plugins {
 android {
     namespace = "com.yourdomain.agent"
     compileSdk = 34
-    buildToolsVersion = "34.0.0"
+    // buildToolsVersion = "34.0.0"
 
     signingConfigs {
         create("release") {

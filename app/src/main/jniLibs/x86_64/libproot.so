@@ -1,0 +1,20 @@
+#!/system/bin/sh
+# PRoot Binary Placeholder for x86_64
+# This is a placeholder file. Replace it with the actual PRoot binary.
+#
+# To obtain the real binary:
+# 1. Download from Termux PRoot releases: https://github.com/termux/proot/releases
+# 2. Or build from source using Android NDK
+#
+# Expected binary: proot-x86_64 (rename to libproot.so)
+# Architecture: x86 64-bit
+# Target: Android emulators and x86-based devices
+#
+# After replacing this file:
+# chmod +x libproot.so
+# file libproot.so  # Should show: ELF 64-bit LSB shared object, x86-64
+
+echo "ERROR: This is a placeholder for libproot.so (x86_64)"
+echo "Please replace this file with the actual PRoot binary for x86_64 architecture."
+echo "See README.md in the parent directory for download instructions."
+exit 1

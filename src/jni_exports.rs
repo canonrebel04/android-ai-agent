@@ -4,6 +4,7 @@
 #[cfg(target_os = "android")]
 pub mod android {
     use crate::complexity_classifier;
+    use crate::model_pricing;
     use jni::objects::{JClass, JString};
     use jni::sys::{jboolean, jint, jstring};
     use jni::EnvUnowned;
@@ -79,6 +80,88 @@ pub mod android {
                 "rejected"
             };
             Ok(env.new_string(msg)?.into_raw())
+        });
+        outcome.resolve::<jni::errors::ThrowRuntimeExAndDefault>()
+    }
+
+    // New JNI functions for model pricing and classification
+
+    #[unsafe(no_mangle)]
+    pub extern "system" fn Java_com_yourdomain_agent_RustBridge_classifyPrompt<'local>(
+        mut unowned_env: EnvUnowned<'local>,
+        _class: JClass<'local>,
+        prompt: JString<'local>,
+    ) -> jstring {
+        let outcome = unowned_env.with_env(|env| -> Result<_, jni::errors::Error> {
+            let input: String = env.get_string(&prompt)?.into();
+            let complexity = complexity_classifier::classify(&input);
+            let display_name = complexity_classifier::complexity_display_name(complexity);
+            let suggested_model = complexity_classifier::suggest_model(complexity);
+            let result = format!("{}|{}", display_name, suggested_model);
+            Ok(env.new_string(&result)?.into_raw())
+        });
+        outcome.resolve::<jni::errors::ThrowRuntimeExAndDefault>()
+    }
+
+    #[unsafe(no_mangle)]
+    pub extern "system" fn Java_com_yourdomain_agent_RustBridge_getModelPricing<'local>(
+        mut unowned_env: EnvUnowned<'local>,
+        _class: JClass<'local>,
+        model_id: JString<'local>,
+    ) -> jstring {
+        let outcome = unowned_env.with_env(|env| -> Result<_, jni::errors::Error> {
+            let model_id_str: String = env.get_string(&model_id)?.into();
+            if let Some(pricing) = model_pricing::get_pricing(&model_id_str) {
+                let result = format!("{}|{}", pricing.input_price, pricing.output_price);
+                Ok(env.new_string(&result)?.into_raw())
+            } else {
+                Ok(env.new_string("0.0|0.0")?.into_raw())
+            }
+        });
+        outcome.resolve::<jni::errors::ThrowRuntimeExAndDefault>()
+    }
+
+    #[unsafe(no_mangle)]
+    pub extern "system" fn Java_com_yourdomain_agent_RustBridge_getAllModelPricing<'local>(
+        mut unowned_env: EnvUnowned<'local>,
+        _class: JClass<'local>,
+    ) -> jstring {
+        let outcome = unowned_env.with_env(|env| -> Result<_, jni::errors::Error> {
+            let pricing_data = model_pricing::get_all_pricing();
+            let json_array: Vec<_> = pricing_data
+                .iter()
+                .map(|(model_id, pricing)| {
+                    serde_json::json!({
+                        "model_id": model_id,
+                        "input_price": pricing.input_price,
+                        "output_price": pricing.output_price
+                    })
+                })
+                .collect();
+            let result = serde_json::to_string(&json_array).unwrap();
+            Ok(env.new_string(&result)?.into_raw())
+        });
+        outcome.resolve::<jni::errors::ThrowRuntimeExAndDefault>()
+    }
+
+    #[unsafe(no_mangle)]
+    pub extern "system" fn Java_com_yourdomain_agent_RustBridge_estimateCost<'local>(
+        mut unowned_env: EnvUnowned<'local>,
+        _class: JClass<'local>,
+        model_id: JString<'local>,
+        input_tokens: jint,
+        output_tokens: jint,
+    ) -> jstring {
+        let outcome = unowned_env.with_env(|env| -> Result<_, jni::errors::Error> {
+            let model_id_str: String = env.get_string(&model_id)?.into();
+            let input_tokens_f64 = input_tokens as f64 / 1000.0; // Convert to thousands
+            let output_tokens_f64 = output_tokens as f64 / 1000.0; // Convert to thousands
+            if let Some(cost) = model_pricing::estimate_cost(&model_id_str, input_tokens_f64, output_tokens_f64) {
+                let result = model_pricing::format_price(cost);
+                Ok(env.new_string(&result)?.into_raw())
+            } else {
+                Ok(env.new_string("$0.00")?.into_raw())
+            }
         });
         outcome.resolve::<jni::errors::ThrowRuntimeExAndDefault>()
     }

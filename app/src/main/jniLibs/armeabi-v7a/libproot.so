@@ -1,0 +1,20 @@
+#!/system/bin/sh
+# PRoot Binary Placeholder for ARMv7 (32-bit ARM)
+# This is a placeholder file. Replace it with the actual PRoot binary.
+#
+# To obtain the real binary:
+# 1. Download from Termux PRoot releases: https://github.com/termux/proot/releases
+# 2. Or build from source using Android NDK
+#
+# Expected binary: proot-arm (rename to libproot.so)
+# Architecture: ARM 32-bit (armeabi-v7a)
+# Target: Older Android devices with 32-bit ARM processors
+#
+# After replacing this file:
+# chmod +x libproot.so
+# file libproot.so  # Should show: ELF 32-bit LSB shared object, ARM
+
+echo "ERROR: This is a placeholder for libproot.so (ARMv7)"
+echo "Please replace this file with the actual PRoot binary for ARMv7 architecture."
+echo "See README.md in the parent directory for download instructions."
+exit 1

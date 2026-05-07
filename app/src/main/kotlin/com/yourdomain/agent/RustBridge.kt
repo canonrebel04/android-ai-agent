@@ -7,13 +7,12 @@ object RustBridge {
     external fun nativeStatus(): String
     external fun nativeGetLogs(count: Int): String
     external fun nativeConfirm(approved: Boolean): String
+    external fun classifyPrompt(prompt: String): String
+    external fun getModelPricing(modelId: String): String
+    external fun getAllModelPricing(): String
+    external fun estimateCost(modelId: String, inputTokens: Int, outputTokens: Int): String
 
     // Unified Chat (Phase 1)
     external fun sendMessage(json: String): String
     external fun getHistory(): String
-
-    // Budget tracker (Phase 6)
-    external fun getMonthlyCost(): String
-    external fun setBudgetThreshold(usd: String): String
-    external fun isOverBudget(): Boolean
 }
