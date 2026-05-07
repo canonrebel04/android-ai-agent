@@ -355,6 +355,7 @@ class TerminalViewModel : androidx.lifecycle.ViewModel() {
  * Data class for output lines
  */
 data class OutputLine(
+    val id: String = java.util.UUID.randomUUID().toString(),
     val text: String,
     val isCommand: Boolean = false,
     val isError: Boolean = false,
@@ -658,7 +659,13 @@ fun TerminalScreen(
                     .padding(horizontal = 8.dp, vertical = 4.dp),
                 verticalArrangement = Arrangement.spacedBy(2.dp)
             ) {
-                items(outputLines) { line ->
+                // Bolt ⚡ Optimization: Add stable key for Compose list rendering
+                // This prevents unnecessary recompositions of all previous terminal
+                // output lines when a new line is appended to the terminal.
+                items(
+                    items = outputLines,
+                    key = { it.id }
+                ) { line ->
                     TerminalOutputLine(line = line)
                 }
             }
