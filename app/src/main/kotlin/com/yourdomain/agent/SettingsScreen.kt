@@ -421,6 +421,89 @@ fun SettingsScreen(viewModel: AgentViewModel) {
                 Spacer(modifier = Modifier.width(8.dp))
                 Text("Start Telegram Bot")
             }
+
+            Spacer(modifier = Modifier.height(8.dp))
+            SectionDivider()
+            Spacer(modifier = Modifier.height(8.dp))
+
+            // WebSocket Gateway
+            SectionHeader("WebSocket Gateway")
+
+            var wsEnabled by remember { mutableStateOf(false) }
+            var wsUrl by remember { mutableStateOf("ws://192.168.1.100:8080/ws") }
+            var wsConnected by remember { mutableStateOf(false) }
+
+            ToggleSetting(
+                label = "Enable WebSocket Gateway",
+                description = "Allow remote control via WebSocket connection",
+                checked = wsEnabled,
+                onCheckedChange = { wsEnabled = it },
+            )
+
+            OutlinedTextField(
+                value = wsUrl,
+                onValueChange = { wsUrl = it },
+                label = { Text("WebSocket URL") },
+                placeholder = { Text("ws://host:port/ws") },
+                singleLine = true,
+                modifier = Modifier.fillMaxWidth(),
+            )
+            Text(
+                text = "Enter WebSocket server URL (e.g., ws://192.168.1.100:8080/ws)",
+                style = MaterialTheme.typography.labelSmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                modifier = Modifier.padding(start = 4.dp, top = 2.dp, bottom = 12.dp),
+            )
+
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                Button(
+                    onClick = {
+                        if (wsEnabled && wsUrl.isNotBlank()) {
+                            val intent = Intent(context, WebSocketGateway::class.java).apply {
+                                action = WebSocketGateway.ACTION_CONNECT
+                                putExtra(WebSocketGateway.EXTRA_URL, wsUrl)
+                            }
+                            val prefs = context.getSharedPreferences("AgentPrefs", Context.MODE_PRIVATE)
+                            prefs.edit().putString("wsUrl", wsUrl).apply()
+                            prefs.edit().putBoolean("wsEnabled", true).apply()
+                            if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.O) {
+                                context.startForegroundService(intent)
+                            } else {
+                                context.startService(intent)
+                            }
+                            wsConnected = true
+                        }
+                    },
+                    modifier = Modifier.weight(1f),
+                    enabled = wsEnabled && wsUrl.isNotBlank() && !wsConnected
+                ) {
+                    Text("Connect")
+                }
+                Button(
+                    onClick = {
+                        val intent = Intent(context, WebSocketGateway::class.java).apply {
+                            action = WebSocketGateway.ACTION_DISCONNECT
+                        }
+                        context.startService(intent)
+                        wsConnected = false
+                    },
+                    modifier = Modifier.weight(1f),
+                    enabled = wsConnected
+                ) {
+                    Text("Disconnect")
+                }
+            }
+            if (wsConnected) {
+                Text(
+                    text = "Connected to $wsUrl",
+                    style = MaterialTheme.typography.labelSmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    modifier = Modifier.padding(top = 8.dp)
+                )
+            }
         }
     }
 }
