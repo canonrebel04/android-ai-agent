@@ -5,3 +5,7 @@
 ## 2025-05-05 - Avoid dynamic Regex compilation in hot loops
 **Learning:** The Rust codebase frequently compiled identical `Regex` patterns inside functions (e.g., `Regex::new(...).unwrap()`) that were called multiple times (like `extract_entities` or `extract_urls`). This repeats the expensive regex parsing/compilation steps on every invocation. The codebase convention for preventing this performance bottleneck is to statically instantiate the compiled regexes once using `once_cell::sync::Lazy`.
 **Action:** Use `once_cell::sync::Lazy` to compile static regular expressions instead of repeatedly calling `Regex::new()` inside frequently executed functions.
+
+## 2025-05-06 - Avoid unnecessary recompositions in Compose LazyColumn
+**Learning:** By default, Jetpack Compose uses the item's index as the key in `LazyColumn` / `itemsIndexed`. When items are added or list order changes, this causes Compose to unnecessarily recompose existing list items, which can degrade scrolling performance in chat UIs or long lists.
+**Action:** Always provide a stable, unique `key` (like `message.id`) to `itemsIndexed` or `items` inside Compose `LazyColumn`s to prevent unnecessary recompositions and improve UI performance.

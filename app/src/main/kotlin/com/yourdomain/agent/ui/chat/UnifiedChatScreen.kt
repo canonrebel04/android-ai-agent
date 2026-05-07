@@ -79,7 +79,13 @@ fun UnifiedChatScreen(
                 verticalArrangement = Arrangement.spacedBy(16.dp),
                 contentPadding = PaddingValues(top = 16.dp, bottom = 100.dp)
             ) {
-                itemsIndexed(messages) { index, message ->
+                // Bolt ⚡ Optimization: Add key for Compose list rendering
+                // Using a stable key prevents Compose from recomposing existing items
+                // when new items are added, which significantly improves chat scroll performance.
+                itemsIndexed(
+                    items = messages,
+                    key = { _, message -> message.id }
+                ) { index, message ->
                     AnimatedMessageItem(message, index)
                 }
             }
