@@ -122,7 +122,8 @@ fun VoiceScreen() {
                 )
             }
 
-            items(models.filter { it.id.startsWith("whisper") }) { model ->
+            // Bolt ⚡ Optimization: Add stable key to prevent unnecessary recompositions
+            items(models.filter { it.id.startsWith("whisper") }, key = { it.id }) { model ->
                 ModelRow(
                     model = model,
                     isRecommended = when (model.id) {
@@ -149,7 +150,8 @@ fun VoiceScreen() {
                 )
             }
 
-            items(models.filter { it.id.startsWith("piper") }) { model ->
+            // Bolt ⚡ Optimization: Add stable key to prevent unnecessary recompositions
+            items(models.filter { it.id.startsWith("piper") }, key = { it.id }) { model ->
                 ModelRow(
                     model = model,
                     isRecommended = when (model.id) {
