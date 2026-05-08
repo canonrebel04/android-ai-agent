@@ -9,3 +9,7 @@
 ## $(date +%Y-%m-%d) - Semantics Content Description for UI Switches
 **Learning:** In Jetpack Compose, `Switch` components without semantic content descriptions are announced poorly or not at all by screen readers like TalkBack, lacking context about what setting the user is toggling.
 **Action:** Use `modifier = Modifier.semantics { contentDescription = "..." }` on switches to associate them with the setting they control.
+
+## 2025-05-15 - Keyboard Actions in Chat Input
+**Learning:** Using explicit KeyboardOptions with imeAction=Send and keyboardActions for primary text inputs (like chat fields) significantly reduces interaction friction by allowing submission directly from the soft keyboard.
+**Action:** Always map the main action (like Send or Done) to the soft keyboard's IME action in Jetpack Compose input fields.
