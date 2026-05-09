@@ -38,6 +38,9 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
+import kotlinx.coroutines.Dispatchers
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.unit.dp
@@ -66,9 +69,18 @@ fun SettingsScreen(viewModel: AgentViewModel) {
     var monitoredContacts by remember { mutableStateOf("") }
 
     // Telegram configuration state
-    var telegramEnabled by remember { mutableStateOf(false) }
-    var telegramToken by remember { mutableStateOf("") }
     val context = LocalContext.current
+    val keystore = remember { KeystoreManager(context) }
+    var telegramEnabled by remember { mutableStateOf(false) }
+
+    // Launch a coroutine to fetch the token off the main thread to avoid blocking the UI
+    var telegramToken by remember { mutableStateOf("") }
+    androidx.compose.runtime.LaunchedEffect(Unit) {
+        withContext(Dispatchers.IO) {
+            val token = keystore.getApiKey("telegramToken") ?: ""
+            telegramToken = token
+        }
+    }
 
     // Message queue state
     var unprocessedCount by remember { mutableStateOf(GlobalMessageQueue.getUnprocessedCount()) }
@@ -402,6 +414,7 @@ fun SettingsScreen(viewModel: AgentViewModel) {
                 modifier = Modifier.padding(start = 4.dp, top = 2.dp, bottom = 12.dp),
             )
 
+            val coroutineScope = androidx.compose.runtime.rememberCoroutineScope()
             Button(
                 onClick = {
                     if (telegramEnabled && telegramToken.isNotBlank()) {
@@ -409,9 +422,14 @@ fun SettingsScreen(viewModel: AgentViewModel) {
                             putExtra(TelegramBotService.EXTRA_BOT_TOKEN, telegramToken)
                         }
                         val prefs = context.getSharedPreferences("AgentPrefs", Context.MODE_PRIVATE)
-                        prefs.edit().putString("telegramToken", telegramToken).apply()
-                        prefs.edit().putBoolean("telegramEnabled", true).apply()
-                        context.startService(intent)
+
+                        coroutineScope.launch {
+                            withContext(Dispatchers.IO) {
+                                keystore.saveApiKey("telegramToken", telegramToken)
+                            }
+                            prefs.edit().putBoolean("telegramEnabled", true).apply()
+                            context.startService(intent)
+                        }
                     }
                 },
                 modifier = Modifier.fillMaxWidth(),
