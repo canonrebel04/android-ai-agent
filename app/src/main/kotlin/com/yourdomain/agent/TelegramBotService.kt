@@ -32,16 +32,23 @@ class TelegramBotService : Service() {
 
     override fun onCreate() {
         super.onCreate()
+        val keystore = KeystoreManager(this)
         val prefs = getSharedPreferences("AgentPrefs", MODE_PRIVATE)
-        botToken = prefs.getString("telegramToken", "") ?: ""
+        val legacyToken = prefs.getString("telegramToken", null)
+        if (legacyToken != null) {
+            keystore.saveApiKey("telegramToken", legacyToken)
+            prefs.edit().remove("telegramToken").apply()
+            botToken = legacyToken
+        } else {
+            botToken = keystore.getApiKey("telegramToken") ?: ""
+        }
         Log.d(TAG, "Telegram bot service created")
     }
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
         intent?.getStringExtra(EXTRA_BOT_TOKEN)?.let { token ->
             botToken = token
-            val prefs = getSharedPreferences("AgentPrefs", MODE_PRIVATE)
-            prefs.edit().putString("telegramToken", token).apply()
+            KeystoreManager(this).saveApiKey("telegramToken", token)
         }
 
         if (botToken.isEmpty()) {
