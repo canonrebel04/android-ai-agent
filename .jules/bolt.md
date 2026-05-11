@@ -9,3 +9,7 @@
 ## 2025-05-06 - Avoid unnecessary recompositions in Compose LazyColumn
 **Learning:** By default, Jetpack Compose uses the item's index as the key in `LazyColumn` / `itemsIndexed`. When items are added or list order changes, this causes Compose to unnecessarily recompose existing list items, which can degrade scrolling performance in chat UIs or long lists.
 **Action:** Always provide a stable, unique `key` (like `message.id`) to `itemsIndexed` or `items` inside Compose `LazyColumn`s to prevent unnecessary recompositions and improve UI performance.
+
+## 2026-05-18 - Avoid dynamic Regex compilation in Kotlin methods
+**Learning:** In Kotlin/Android, `java.util.regex.Pattern.compile` is an expensive operation. Placing it inside a frequently invoked method (such as `parseAnsi` which is called per output line in `TerminalScreen.kt`) creates a significant performance bottleneck.
+**Action:** Extract `Pattern.compile` calls to static constants (e.g. inside an `object` singleton or `companion object`) to ensure the regular expression is only compiled once, as `Pattern` instances are thread-safe and immutable.

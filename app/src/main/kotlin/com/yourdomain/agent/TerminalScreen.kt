@@ -106,12 +106,14 @@ object AnsiColors {
         "47" to Color.White,
     )
 
+    // Bolt ⚡ Optimization: Cached to avoid recompiling regex on every call
+    private val ANSI_PATTERN = Pattern.compile("\\u001B\\[([0-9;]*)m")
+
     /**
      * Parse ANSI escape codes and return styled text
      */
     fun parseAnsi(text: String, baseColor: Color = MaterialTheme.colorScheme.onSurface): AnnotatedString {
-        val pattern = Pattern.compile("\\u001B\[([0-9;]*)m")
-        val matcher = pattern.matcher(text)
+        val matcher = ANSI_PATTERN.matcher(text)
         
         val builder = AnnotatedString.Builder()
         
