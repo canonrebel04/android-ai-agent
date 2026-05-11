@@ -13,3 +13,7 @@
 ## 2025-05-15 - Keyboard Actions in Chat Input
 **Learning:** Using explicit KeyboardOptions with imeAction=Send and keyboardActions for primary text inputs (like chat fields) significantly reduces interaction friction by allowing submission directly from the soft keyboard.
 **Action:** Always map the main action (like Send or Done) to the soft keyboard's IME action in Jetpack Compose input fields.
+
+## $(date +%Y-%m-%d) - Input Clearing and Focus Management
+**Learning:** In chat-like or terminal interfaces, when a user submits a command via the soft keyboard (`ImeAction.Send`) or a physical button, leaving the text in the input field and the keyboard open creates significant friction. Users have to manually erase the text and hide the keyboard to see the output.
+**Action:** Always clear the input state and call `LocalFocusManager.current.clearFocus()` immediately upon submission to ensure a smooth, low-friction UX.

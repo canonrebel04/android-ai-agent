@@ -57,6 +57,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.SpanStyle
 import androidx.compose.ui.text.buildAnnotatedString
@@ -383,6 +384,7 @@ fun TerminalScreen(
     var showHistoryDropdown by remember { mutableStateOf(false) }
     
     val listState = rememberLazyListState()
+    val focusManager = LocalFocusManager.current
     val snackbarHostState = remember { SnackbarHostState() }
     val scope = rememberCoroutineScope()
     
@@ -546,6 +548,9 @@ fun TerminalScreen(
                                 onSend = {
                                     if (currentCommand.isNotBlank()) {
                                         viewModel.executeCommand(currentCommand)
+                                        currentCommand = ""
+                                        viewModel.setCommand("")
+                                        focusManager.clearFocus()
                                     }
                                 }
                             ),
@@ -582,6 +587,9 @@ fun TerminalScreen(
                             onClick = {
                                 if (currentCommand.isNotBlank()) {
                                     viewModel.executeCommand(currentCommand)
+                                    currentCommand = ""
+                                    viewModel.setCommand("")
+                                    focusManager.clearFocus()
                                 }
                             },
                             enabled = currentCommand.isNotBlank() && !isExecuting && sandboxInitialized,
