@@ -17,3 +17,6 @@
 ## $(date +%Y-%m-%d) - Input Clearing and Focus Management
 **Learning:** In chat-like or terminal interfaces, when a user submits a command via the soft keyboard (`ImeAction.Send`) or a physical button, leaving the text in the input field and the keyboard open creates significant friction. Users have to manually erase the text and hide the keyboard to see the output.
 **Action:** Always clear the input state and call `LocalFocusManager.current.clearFocus()` immediately upon submission to ensure a smooth, low-friction UX.
+## 2026-05-12 - Clear Focus on Chat Submit
+**Learning:** In Jetpack Compose chat interfaces, soft keyboards linger after submission and create friction. Immediate focus clearing is essential for frictionless UX.
+**Action:** Always clear input state and use LocalFocusManager.current.clearFocus() immediately after a submission (e.g., via KeyboardActions(onSend) or submit button).
