@@ -26,6 +26,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.ui.platform.LocalFocusManager
 import com.yourdomain.agent.ChatMessage
 import kotlinx.coroutines.launch
 
@@ -39,6 +40,7 @@ fun UnifiedChatScreen(
     var inputText by remember { mutableStateOf("") }
     val listState = rememberLazyListState()
     val scope = rememberCoroutineScope()
+    val focusManager = LocalFocusManager.current
 
     // Auto-scroll to bottom on new messages
     LaunchedEffect(messages.size) {
@@ -109,6 +111,7 @@ fun UnifiedChatScreen(
                     if (inputText.isNotBlank()) {
                         onSendMessage(inputText)
                         inputText = ""
+                        focusManager.clearFocus()
                     }
                 }
             )
