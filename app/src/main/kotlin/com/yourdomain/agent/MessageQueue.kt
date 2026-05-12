@@ -86,13 +86,17 @@ class MessageQueue {
 
     /**
      * Mark all messages as processed
+     * Optimized: Uses replaceAll instead of indexed assignment in a loop to
+     * avoid O(N^2) allocations for CopyOnWriteArrayList.
      */
     fun markAllAsProcessed() {
         var anyChanged = false
-        for (i in messages.indices) {
-            if (!messages[i].isProcessed) {
-                messages[i] = messages[i].copy(isProcessed = true)
+        messages.replaceAll { message ->
+            if (!message.isProcessed) {
                 anyChanged = true
+                message.copy(isProcessed = true)
+            } else {
+                message
             }
         }
         if (anyChanged) {
