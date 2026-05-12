@@ -13,3 +13,7 @@
 ## 2026-05-18 - Avoid dynamic Regex compilation in Kotlin methods
 **Learning:** In Kotlin/Android, `java.util.regex.Pattern.compile` is an expensive operation. Placing it inside a frequently invoked method (such as `parseAnsi` which is called per output line in `TerminalScreen.kt`) creates a significant performance bottleneck.
 **Action:** Extract `Pattern.compile` calls to static constants (e.g. inside an `object` singleton or `companion object`) to ensure the regular expression is only compiled once, as `Pattern` instances are thread-safe and immutable.
+
+## 2025-05-19 - Bulk update in CopyOnWriteArrayList
+**Learning:** Iterating through a `CopyOnWriteArrayList` and replacing elements by index (e.g. `list[i] = ...`) allocates a new backing array for every single modification, resulting in O(N^2) time complexity and memory overhead.
+**Action:** When performing bulk conditional updates on `CopyOnWriteArrayList`, use `replaceAll { ... }` instead to do it in O(N) time with only a single array allocation.
