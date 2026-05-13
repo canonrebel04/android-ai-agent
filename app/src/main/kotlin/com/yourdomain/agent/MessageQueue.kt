@@ -89,12 +89,14 @@ class MessageQueue {
      */
     fun markAllAsProcessed() {
         var anyChanged = false
-        for (i in messages.indices) {
-            if (!messages[i].isProcessed) {
-                messages[i] = messages[i].copy(isProcessed = true)
+        messages.replaceAll(java.util.function.UnaryOperator { msg ->
+            if (!msg.isProcessed) {
                 anyChanged = true
+                msg.copy(isProcessed = true)
+            } else {
+                msg
             }
-        }
+        })
         if (anyChanged) {
             notifyAllMessagesProcessed()
         }
