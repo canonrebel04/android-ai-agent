@@ -88,13 +88,22 @@ class MessageQueue {
      * Mark all messages as processed
      */
     fun markAllAsProcessed() {
-        var anyChanged = false
-        for (i in messages.indices) {
-            if (!messages[i].isProcessed) {
-                messages[i] = messages[i].copy(isProcessed = true)
-                anyChanged = true
-            }
+        // Bolt ⚡ Optimization: Fast return if no updates needed to avoid array copy
+        if (messages.none { !it.isProcessed }) {
+            return
         }
+
+        var anyChanged = false
+        // Bolt ⚡ Optimization: Bulk update for CopyOnWriteArrayList
+        // Replaces O(N^2) allocations with O(1) allocation using UnaryOperator to avoid Kotlin MutableList iterator resolution crash
+        messages.replaceAll(java.util.function.UnaryOperator { msg ->
+            if (!msg.isProcessed) {
+                anyChanged = true
+                msg.copy(isProcessed = true)
+            } else {
+                msg
+            }
+        })
         if (anyChanged) {
             notifyAllMessagesProcessed()
         }
