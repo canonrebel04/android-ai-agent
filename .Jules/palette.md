@@ -21,3 +21,7 @@
 ## 2026-05-12 - [Clear focus on message submit in custom components]
 **Learning:** Leaving the soft keyboard open and active after a chat message is sent creates friction, as the user has to manually dismiss it to see the full chat history or the reply. Jetpack Compose doesn't automatically clear focus on submit actions within custom composables like ChatInput.
 **Action:** Always clear the input state and explicitly use `LocalFocusManager.current.clearFocus()` immediately after submission (e.g., via `KeyboardActions` or a submit button) to prevent the keyboard from lingering.
+
+## 2025-02-12 - Dismissing Soft Keyboard After Action
+**Learning:** In Android Jetpack Compose, the soft keyboard remains visible even after an interaction initiates a new task or clears an input state. This creates friction, especially in chat or terminal-like UIs, where screen real estate is needed immediately after a submission.
+**Action:** Always call `LocalFocusManager.current.clearFocus()` inside submit handlers (like `onClick` for buttons or `KeyboardActions.onSend`) associated with text inputs.
