@@ -126,6 +126,7 @@ fun HomeScreen(
                                 if (task.isNotEmpty()) {
                                     viewModel.startTask(task)
                                     inputText = ""
+                                    focusManager.clearFocus()
                                 }
                             },
                             enabled = inputText.isNotBlank(),
