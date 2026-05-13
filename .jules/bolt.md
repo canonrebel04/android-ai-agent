@@ -17,3 +17,7 @@
 ## 2026-05-12 - Avoid inline collection operations in Compose build blocks
 **Learning:** Operations like `.filter` inside a `LazyColumn` builder block execute during every recomposition of the screen. In screens with frequent state updates (like model download progress), this repeatedly allocates memory and performs O(N) filtering, degrading performance.
 **Action:** Memoize derived collections using `remember(dependency) { ... }` so the operation only runs when the underlying data source actually changes.
+
+## 2026-05-18 - Avoid O(N^2) allocations in CopyOnWriteArrayList modifications
+**Learning:** When updating elements in a `CopyOnWriteArrayList`, modifying items individually in a `for` loop causes O(N^2) allocations since it creates a new copy of the underlying array for each modification. Additionally, using the Kotlin extension function `list.replaceAll { ... }` causes an `UnsupportedOperationException` crash due to Kotlin's `MutableList` iterator resolution.
+**Action:** Use `replaceAll`, but explicitly use the Java member method `list.replaceAll(java.util.function.UnaryOperator { ... })` to perform a bulk update, avoiding the crash and reducing the operation to O(1) array allocation.
