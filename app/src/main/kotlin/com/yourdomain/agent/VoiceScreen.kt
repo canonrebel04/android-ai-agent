@@ -27,6 +27,9 @@ fun VoiceScreen() {
     val modelManager = remember { VoiceModelManager(context) }
     val models by modelManager.models.collectAsState()
 
+    val whisperModels = remember(models) { models.filter { it.id.startsWith("whisper") } }
+    val piperModels = remember(models) { models.filter { it.id.startsWith("piper") } }
+
     var wakeWord by remember { mutableStateOf("hey agent") }
     var voiceEnabled by remember { mutableStateOf(false) }
 
@@ -126,7 +129,7 @@ fun VoiceScreen() {
             // Model progress updates trigger frequent recompositions. Using a stable key
             // prevents Compose from unnecessarily recomposing all other unchanged items in the list.
             items(
-                items = models.filter { it.id.startsWith("whisper") },
+                items = whisperModels,
                 key = { it.id }
             ) { model ->
                 ModelRow(
@@ -157,7 +160,7 @@ fun VoiceScreen() {
 
             // Bolt ⚡ Optimization: Add stable key for list items
             items(
-                items = models.filter { it.id.startsWith("piper") },
+                items = piperModels,
                 key = { it.id }
             ) { model ->
                 ModelRow(

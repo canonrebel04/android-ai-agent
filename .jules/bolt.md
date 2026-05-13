@@ -13,3 +13,7 @@
 ## 2026-05-18 - Avoid dynamic Regex compilation in Kotlin methods
 **Learning:** In Kotlin/Android, `java.util.regex.Pattern.compile` is an expensive operation. Placing it inside a frequently invoked method (such as `parseAnsi` which is called per output line in `TerminalScreen.kt`) creates a significant performance bottleneck.
 **Action:** Extract `Pattern.compile` calls to static constants (e.g. inside an `object` singleton or `companion object`) to ensure the regular expression is only compiled once, as `Pattern` instances are thread-safe and immutable.
+
+## 2026-05-12 - Avoid inline collection operations in Compose build blocks
+**Learning:** Operations like `.filter` inside a `LazyColumn` builder block execute during every recomposition of the screen. In screens with frequent state updates (like model download progress), this repeatedly allocates memory and performs O(N) filtering, degrading performance.
+**Action:** Memoize derived collections using `remember(dependency) { ... }` so the operation only runs when the underlying data source actually changes.
