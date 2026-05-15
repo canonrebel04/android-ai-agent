@@ -24,3 +24,7 @@
 ## 2024-05-14 - Kotlin extension function vs Java member method resolution gotcha
 **Learning:** In Kotlin, `CopyOnWriteArrayList` is treated as a `MutableList`. If we use `messages.replaceAll { ... }`, Kotlin prioritizes the `MutableList<T>.replaceAll(operator: (T) -> T)` extension function over the Java `replaceAll(UnaryOperator<E>)` member method. Kotlin's extension function implementation uses a standard iterator and calls `.set()` for every item. However, `CopyOnWriteArrayList`'s iterator does not support mutation, resulting in an unconditional `UnsupportedOperationException` and an application crash.
 **Action:** When calling Java member functions that take SAM (Single Abstract Method) interfaces like `UnaryOperator` on Java collections that implement interfaces mapped to Kotlin standard library equivalents (like `List` -> `MutableList`), explicitly cast the lambda (e.g. `messages.replaceAll(java.util.function.UnaryOperator { ... })`) to force the use of the Java member method and avoid incompatible Kotlin extension functions.
+
+## 2026-05-18 - Optimize chained sequence operations in Kotlin log parsing
+**Learning:** In Kotlin, chaining operations like `logs.split("\n").filter { ... }` on large strings creates multiple intermediate lists in memory (one for the split result, one for the filtered result).
+**Action:** Use `lineSequence().filter { ... }.toList()` instead to process elements lazily, significantly reducing memory allocation overhead without sacrificing code readability.
