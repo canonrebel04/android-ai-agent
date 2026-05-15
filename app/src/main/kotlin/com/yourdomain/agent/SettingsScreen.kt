@@ -297,7 +297,7 @@ fun SettingsScreen(viewModel: AgentViewModel) {
                 },
                 modifier = Modifier.fillMaxWidth(),
             ) {
-                Icon(Icons.Default.Send, contentDescription = "Save")
+                Icon(Icons.Default.Send, contentDescription = null)
                 Spacer(modifier = Modifier.width(8.dp))
                 Text("Save Notification Settings")
             }
@@ -447,7 +447,7 @@ fun SettingsScreen(viewModel: AgentViewModel) {
                 modifier = Modifier.fillMaxWidth(),
                 enabled = telegramEnabled && telegramToken.isNotBlank()
             ) {
-                Icon(Icons.Default.Send, contentDescription = "Start")
+                Icon(Icons.Default.Send, contentDescription = null)
                 Spacer(modifier = Modifier.width(8.dp))
                 Text("Start Telegram Bot")
             }
