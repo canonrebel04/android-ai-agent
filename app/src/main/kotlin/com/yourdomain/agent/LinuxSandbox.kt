@@ -449,7 +449,9 @@ class LinuxSandbox(private val context: Context) {
         
         val result = executeCommand("ls -1 '$path'")
         return if (result?.first == 0) {
-            result.second.split("\n").filter { it.isNotEmpty() }
+            // Bolt ⚡ Optimization: Use lineSequence() instead of split("\n")
+            // This prevents creating a large intermediate collection when listing many files
+            result.second.lineSequence().filter { it.isNotEmpty() }.toList()
         } else {
             null
         }
