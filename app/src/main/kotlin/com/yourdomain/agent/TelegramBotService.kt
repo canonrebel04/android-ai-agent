@@ -32,28 +32,23 @@ class TelegramBotService : Service() {
 
     override fun onCreate() {
         super.onCreate()
+        val keystore = KeystoreManager(this)
         val prefs = getSharedPreferences("AgentPrefs", MODE_PRIVATE)
-        val keystoreManager = KeystoreManager(this)
-
-        // Migration strategy: if plain-text token exists, move to Keystore
         val legacyToken = prefs.getString("telegramToken", null)
-        if (legacyToken != null && legacyToken.isNotEmpty()) {
-            keystoreManager.saveApiKey("telegramToken", legacyToken)
+        if (legacyToken != null) {
+            keystore.saveApiKey("telegramToken", legacyToken)
             prefs.edit().remove("telegramToken").apply()
             botToken = legacyToken
-            Log.d(TAG, "Migrated telegram token to Keystore")
         } else {
-            botToken = keystoreManager.getApiKey("telegramToken") ?: ""
+            botToken = keystore.getApiKey("telegramToken") ?: ""
         }
-
         Log.d(TAG, "Telegram bot service created")
     }
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
         intent?.getStringExtra(EXTRA_BOT_TOKEN)?.let { token ->
             botToken = token
-            val keystoreManager = KeystoreManager(this)
-            keystoreManager.saveApiKey("telegramToken", token)
+            KeystoreManager(this).saveApiKey("telegramToken", token)
         }
 
         if (botToken.isEmpty()) {

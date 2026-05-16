@@ -40,9 +40,9 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.material.icons.filled.Visibility
-import androidx.compose.material.icons.filled.VisibilityOff
-import androidx.compose.material3.IconButton
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
+import kotlinx.coroutines.Dispatchers
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.text.input.VisualTransformation
@@ -75,28 +75,16 @@ fun SettingsScreen(viewModel: AgentViewModel) {
     var monitoredContacts by remember { mutableStateOf("") }
 
     // Telegram configuration state
-    var telegramEnabled by remember { mutableStateOf(false) }
-    var telegramToken by remember { mutableStateOf("") }
-    var passwordVisible by remember { mutableStateOf(false) }
     val context = LocalContext.current
-    val coroutineScope = rememberCoroutineScope()
+    val keystore = remember { KeystoreManager(context) }
+    var telegramEnabled by remember { mutableStateOf(false) }
 
-    LaunchedEffect(Unit) {
+    // Launch a coroutine to fetch the token off the main thread to avoid blocking the UI
+    var telegramToken by remember { mutableStateOf("") }
+    androidx.compose.runtime.LaunchedEffect(Unit) {
         withContext(Dispatchers.IO) {
-            val keystoreManager = KeystoreManager(context)
-            val token = keystoreManager.getApiKey("telegramToken")
-            if (token != null) {
-                telegramToken = token
-            } else {
-                // Check prefs in case it wasn't migrated
-                val prefs = context.getSharedPreferences("AgentPrefs", Context.MODE_PRIVATE)
-                val legacyToken = prefs.getString("telegramToken", null)
-                if (legacyToken != null) {
-                    telegramToken = legacyToken
-                }
-            }
-            val prefs = context.getSharedPreferences("AgentPrefs", Context.MODE_PRIVATE)
-            telegramEnabled = prefs.getBoolean("telegramEnabled", false)
+            val token = keystore.getApiKey("telegramToken") ?: ""
+            telegramToken = token
         }
     }
 
@@ -443,6 +431,7 @@ fun SettingsScreen(viewModel: AgentViewModel) {
                 modifier = Modifier.padding(start = 4.dp, top = 2.dp, bottom = 12.dp),
             )
 
+            val coroutineScope = androidx.compose.runtime.rememberCoroutineScope()
             Button(
                 onClick = {
                     if (telegramEnabled && telegramToken.isNotBlank()) {
@@ -456,6 +445,15 @@ fun SettingsScreen(viewModel: AgentViewModel) {
                             val intent = Intent(context, TelegramBotService::class.java).apply {
                                 putExtra(TelegramBotService.EXTRA_BOT_TOKEN, telegramToken)
                             }
+                            context.startService(intent)
+                        }
+                        val prefs = context.getSharedPreferences("AgentPrefs", Context.MODE_PRIVATE)
+
+                        coroutineScope.launch {
+                            withContext(Dispatchers.IO) {
+                                keystore.saveApiKey("telegramToken", telegramToken)
+                            }
+                            prefs.edit().putBoolean("telegramEnabled", true).apply()
                             context.startService(intent)
                         }
                     }

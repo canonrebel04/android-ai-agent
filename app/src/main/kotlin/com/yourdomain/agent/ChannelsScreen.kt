@@ -42,7 +42,9 @@ import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.input.KeyboardType
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
+import kotlinx.coroutines.Dispatchers
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
@@ -97,26 +99,15 @@ fun ChannelsScreen() {
 @Composable
 private fun TelegramCard() {
     var enabled by remember { mutableStateOf(false) }
-    var botToken by remember { mutableStateOf("") }
-    var testResult by remember { mutableStateOf<String?>(null) }
     val context = LocalContext.current
-    val coroutineScope = rememberCoroutineScope()
-
-    LaunchedEffect(Unit) {
+    val keystore = remember { KeystoreManager(context) }
+    var botToken by remember { mutableStateOf("") }
+    androidx.compose.runtime.LaunchedEffect(Unit) {
         withContext(Dispatchers.IO) {
-            val keystoreManager = KeystoreManager(context)
-            val token = keystoreManager.getApiKey("telegramToken")
-            if (token != null) {
-                botToken = token
-            } else {
-                val prefs = context.getSharedPreferences("AgentPrefs", android.content.Context.MODE_PRIVATE)
-                val legacyToken = prefs.getString("telegramToken", null)
-                if (legacyToken != null) {
-                    botToken = legacyToken
-                }
-            }
+            botToken = keystore.getApiKey("telegramToken") ?: ""
         }
     }
+    var testResult by remember { mutableStateOf<String?>(null) }
 
     Card(
         modifier = Modifier.fillMaxWidth(),
@@ -194,21 +185,18 @@ private fun TelegramCard() {
                         modifier = Modifier.fillMaxWidth(),
                         verticalAlignment = Alignment.CenterVertically,
                     ) {
+                        val coroutineScope = androidx.compose.runtime.rememberCoroutineScope()
                         Button(
                             onClick = {
                                 if (botToken.isNotBlank()) {
-                                    // Save token and start service
                                     coroutineScope.launch {
                                         withContext(Dispatchers.IO) {
-                                            val keystoreManager = KeystoreManager(context)
-                                            keystoreManager.saveApiKey("telegramToken", botToken)
+                                            keystore.saveApiKey("telegramToken", botToken)
                                         }
-                                        val intent = Intent(context, TelegramBotService::class.java).apply {
-                                            putExtra(TelegramBotService.EXTRA_BOT_TOKEN, botToken)
-                                        }
+                                        val intent = Intent(context, TelegramBotService::class.java)
                                         context.startService(intent)
+                                        testResult = "Connected! Bot is running."
                                     }
-                                    testResult = "Connected! Bot is running."
                                 } else {
                                     testResult = "Please enter a bot token"
                                 }
