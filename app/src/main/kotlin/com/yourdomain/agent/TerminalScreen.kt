@@ -671,13 +671,8 @@ fun TerminalScreen(
                     .padding(horizontal = 8.dp, vertical = 4.dp),
                 verticalArrangement = Arrangement.spacedBy(2.dp)
             ) {
-                // Bolt ⚡ Optimization: Add stable key for Compose list rendering
-                // This prevents unnecessary recompositions of all previous terminal
-                // output lines when a new line is appended to the terminal.
-                items(
-                    items = outputLines,
-                    key = { it.id }
-                ) { line ->
+                // Bolt ⚡ Optimization: Add stable key to prevent unnecessary recompositions
+                items(outputLines, key = { it.id }) { line ->
                     TerminalOutputLine(line = line)
                 }
             }
