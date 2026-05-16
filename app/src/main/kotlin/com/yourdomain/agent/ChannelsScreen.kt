@@ -349,7 +349,7 @@ private fun VoiceCard() {
                     }
                 }
                 Switch(
-                    modifier = Modifier.semantics { contentDescription = "Enable Voice Control" },
+                    modifier = Modifier.semantics { contentDescription = "Enable Voice" },
                     checked = enabled,
                     onCheckedChange = { enabled = it },
                     colors = SwitchDefaults.colors(
