@@ -50,7 +50,7 @@ fun AgentNavigation() {
                 NavigationBar {
                     listOf(Screen.Chat, Screen.Voice, Screen.Models, Screen.Settings, Screen.Terminal).forEach { screen ->
                         NavigationBarItem(
-                            icon = { Icon(screen.icon, contentDescription = screen.label) },
+                            icon = { Icon(screen.icon, contentDescription = null) },
                             label = { Text(screen.label) },
                             selected = navController.currentBackStackEntry?.destination?.route == screen.name,
                             onClick = { 
