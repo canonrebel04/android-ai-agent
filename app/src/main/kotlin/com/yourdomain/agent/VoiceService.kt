@@ -120,7 +120,14 @@ class VoiceService : Service() {
             while (isListening && isActive) {
                 val read = audioRecord?.read(buffer, 0, buffer.size) ?: -1
                 if (read > 0) {
-                    val energy = buffer.take(read).map { it * it }.average()
+                    // Bolt ⚡ Optimization: Calculate energy with a manual loop instead of .take().map().average()
+                    // to avoid allocating intermediate collections in this hot audio processing loop.
+                    var sumSquares = 0.0
+                    for (i in 0 until read) {
+                        val sample = buffer[i].toDouble()
+                        sumSquares += sample * sample
+                    }
+                    val energy = sumSquares / read
                     // Simple threshold — Porcupine SDK replaces this
                     if (energy > 1000.0) {
                         onWakeWordDetected()
@@ -181,7 +188,13 @@ class VoiceService : Service() {
         // val result = WhisperNative.transcribe(modelPath, pcm)
 
         // Fallback: return simulated result
-        val energy = pcm.map { it * it }.average()
+        // Bolt ⚡ Optimization: Calculate energy without allocating collections
+        var sumSquares = 0.0
+        for (sample in pcm) {
+            val dSample = sample.toDouble()
+            sumSquares += dSample * dSample
+        }
+        val energy = if (pcm.isNotEmpty()) sumSquares / pcm.size else 0.0
         return if (energy > 500.0) {
             "What time is it?"
         } else {

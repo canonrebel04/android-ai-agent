@@ -27,3 +27,6 @@
 ## 2026-05-15 - Avoid memory allocation when processing large strings
 **Learning:** Calling `split("\\n")` on large strings creates a new intermediate List containing all split parts. When processing large logs or long output from the sandbox/terminal, this causes significant memory allocation and can cause stuttering and garbage collection pauses.
 **Action:** Use `lineSequence()` to iterate through strings lazily. This avoids intermediate collection allocation and provides better memory efficiency, especially when combined with `.filter` and `.forEach` operations.
+## 2026-05-18 - Avoid boxing and collection allocations in hot loops
+**Learning:** Using `.map { it * it }.average()` on a primitive array like `ShortArray` in a hot loop (such as audio processing frames) forces boxing to objects (`Short` and `Int`) and allocates intermediate collections. This creates substantial memory pressure and triggers frequent garbage collections, which stutters real-time audio analysis.
+**Action:** Replace Kotlin collection standard library functions (`.map`, `.average`) with manual indexed loops for primitive arrays in performance-critical paths to completely eliminate allocations.
