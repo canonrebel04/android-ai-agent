@@ -17,13 +17,7 @@
 ## 2026-05-12 - Avoid inline collection operations in Compose build blocks
 **Learning:** Operations like `.filter` inside a `LazyColumn` builder block execute during every recomposition of the screen. In screens with frequent state updates (like model download progress), this repeatedly allocates memory and performs O(N) filtering, degrading performance.
 **Action:** Memoize derived collections using `remember(dependency) { ... }` so the operation only runs when the underlying data source actually changes.
-## 2024-05-14 - Optimize bulk updates in CopyOnWriteArrayList
-**Learning:** Modifying individual elements in a `CopyOnWriteArrayList` within a loop causes O(N^2) complexity because a new array is allocated for each modification.
-**Action:** Use `replaceAll` for bulk updates on `CopyOnWriteArrayList` to allocate the backing array only once.
 
-## 2024-05-14 - Kotlin extension function vs Java member method resolution gotcha
-**Learning:** In Kotlin, `CopyOnWriteArrayList` is treated as a `MutableList`. If we use `messages.replaceAll { ... }`, Kotlin prioritizes the `MutableList<T>.replaceAll(operator: (T) -> T)` extension function over the Java `replaceAll(UnaryOperator<E>)` member method. Kotlin's extension function implementation uses a standard iterator and calls `.set()` for every item. However, `CopyOnWriteArrayList`'s iterator does not support mutation, resulting in an unconditional `UnsupportedOperationException` and an application crash.
-**Action:** When calling Java member functions that take SAM (Single Abstract Method) interfaces like `UnaryOperator` on Java collections that implement interfaces mapped to Kotlin standard library equivalents (like `List` -> `MutableList`), explicitly cast the lambda (e.g. `messages.replaceAll(java.util.function.UnaryOperator { ... })`) to force the use of the Java member method and avoid incompatible Kotlin extension functions.
-## 2026-05-15 - Avoid memory allocation when processing large strings
-**Learning:** Calling `split("\\n")` on large strings creates a new intermediate List containing all split parts. When processing large logs or long output from the sandbox/terminal, this causes significant memory allocation and can cause stuttering and garbage collection pauses.
-**Action:** Use `lineSequence()` to iterate through strings lazily. This avoids intermediate collection allocation and provides better memory efficiency, especially when combined with `.filter` and `.forEach` operations.
+## 2026-05-18 - Avoid O(N^2) allocations in CopyOnWriteArrayList modifications
+**Learning:** When updating elements in a `CopyOnWriteArrayList`, modifying items individually in a `for` loop causes O(N^2) allocations since it creates a new copy of the underlying array for each modification. Additionally, using the Kotlin extension function `list.replaceAll { ... }` causes an `UnsupportedOperationException` crash due to Kotlin's `MutableList` iterator resolution.
+**Action:** Use `replaceAll`, but explicitly use the Java member method `list.replaceAll(java.util.function.UnaryOperator { ... })` to perform a bulk update, avoiding the crash and reducing the operation to O(1) array allocation.
