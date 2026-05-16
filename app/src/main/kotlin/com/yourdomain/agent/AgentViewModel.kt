@@ -115,7 +115,9 @@ class AgentViewModel(private val context: Context? = null) : ViewModel(), Messag
     fun refreshLogs(count: Int = 20) {
         viewModelScope.launch { withContext(Dispatchers.IO) {
             val logs = RustBridge.nativeGetLogs(count)
-            _state.value = _state.value.copy(logLines = logs.split("\n").filter { it.isNotBlank() })
+            // Bolt ⚡ Optimization: Use lineSequence() instead of split("\n")
+            // This prevents creating a large intermediate collection when splitting the string
+            _state.value = _state.value.copy(logLines = logs.lineSequence().filter { it.isNotBlank() }.toList())
         }}
     }
 
