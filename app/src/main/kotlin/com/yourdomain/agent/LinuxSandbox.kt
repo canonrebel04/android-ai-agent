@@ -79,8 +79,7 @@ class LinuxSandbox(private val context: Context) {
             Log.d(TAG, "LinuxSandbox initialized successfully")
             true
         } catch (e: Exception) {
-            Log.e(TAG, "Error during initialization: ${e.message}")
-            e.printStackTrace()
+            Log.e(TAG, "Error during initialization: ${e.message}", e)
             false
         }
     }
@@ -133,8 +132,7 @@ class LinuxSandbox(private val context: Context) {
             Log.d(TAG, "Rootfs extracted successfully to: $rootfsPath")
             true
         } catch (e: Exception) {
-            Log.e(TAG, "Error extracting rootfs: ${e.message}")
-            e.printStackTrace()
+            Log.e(TAG, "Error extracting rootfs: ${e.message}", e)
             false
         }
     }
@@ -232,8 +230,7 @@ class LinuxSandbox(private val context: Context) {
             Log.d(TAG, "Set executable permissions on proot binary")
             true
         } catch (e: Exception) {
-            Log.e(TAG, "Error setting executable permissions: ${e.message}")
-            e.printStackTrace()
+            Log.e(TAG, "Error setting executable permissions: ${e.message}", e)
             false
         }
     }
@@ -319,8 +316,7 @@ class LinuxSandbox(private val context: Context) {
             
             Pair(exitCode, output)
         } catch (e: Exception) {
-            Log.e(TAG, "Error executing command: ${e.message}")
-            e.printStackTrace()
+            Log.e(TAG, "Error executing command: ${e.message}", e)
             null
         }
     }
@@ -477,8 +473,7 @@ class LinuxSandbox(private val context: Context) {
             
             Log.d(TAG, "LinuxSandbox cleaned up successfully")
         } catch (e: Exception) {
-            Log.e(TAG, "Error during cleanup: ${e.message}")
-            e.printStackTrace()
+            Log.e(TAG, "Error during cleanup: ${e.message}", e)
         }
     }
     
