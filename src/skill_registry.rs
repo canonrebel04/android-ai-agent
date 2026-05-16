@@ -120,6 +120,12 @@ pub struct SkillRegistry {
     skills: HashMap<String, Box<dyn Skill>>,
 }
 
+impl Default for SkillRegistry {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl SkillRegistry {
     pub fn new() -> Self {
         Self {
@@ -136,7 +142,7 @@ impl SkillRegistry {
         for entry in std::fs::read_dir(dir)? {
             let entry = entry?;
             let path = entry.path();
-            if path.extension().map_or(false, |ext| ext == "toml") {
+            if path.extension().is_some_and(|ext| ext == "toml") {
                 match TomlSkill::load(&path) {
                     Ok(skill) => {
                         self.register(Box::new(skill));

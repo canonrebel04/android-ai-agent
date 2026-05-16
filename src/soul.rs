@@ -176,7 +176,7 @@ impl SoulSystem {
 
         // Dynamic suffix: instructions + active context
         prompt.push_str(dynamic_instructions);
-        prompt.push_str("\n");
+        prompt.push('\n');
 
         if let Some(ctx) = active_context {
             prompt.push_str(ctx);

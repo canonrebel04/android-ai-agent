@@ -63,6 +63,12 @@ pub struct BudgetTracker {
     budget_threshold: Mutex<f64>,
 }
 
+impl Default for BudgetTracker {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl BudgetTracker {
     pub fn new() -> Self {
         Self {

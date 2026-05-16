@@ -260,6 +260,49 @@ impl FactStore {
         Ok(results)
     }
 
+    /// Batch probe: finds facts that mention ANY of the given entities.
+    pub fn probe_batched(&self, entities: &[&str], limit: usize) -> SqlResult<Vec<Fact>> {
+        if entities.is_empty() {
+            return Ok(Vec::new());
+        }
+
+        let conn = self.conn.lock().unwrap();
+
+        let conditions: Vec<String> = (0..entities.len())
+            .map(|i| format!("f.entities LIKE ?{}", i + 1))
+            .collect();
+        let where_clause = conditions.join(" OR ");
+
+        let sql = format!(
+            "SELECT f.id, f.content, f.category, f.tags, f.entities, f.trust,
+                    f.created_at, f.last_accessed, f.access_count
+             FROM facts f
+             WHERE {}
+             ORDER BY f.trust DESC, f.access_count DESC
+             LIMIT ?{}",
+            where_clause,
+            entities.len() + 1
+        );
+
+        let mut stmt = conn.prepare(&sql)?;
+
+        let patterns: Vec<String> = entities.iter().map(|e| format!("%{}%", e)).collect();
+        let limit_i64 = limit as i64;
+
+        let mut params: Vec<&dyn rusqlite::types::ToSql> = patterns
+            .iter()
+            .map(|p| p as &dyn rusqlite::types::ToSql)
+            .collect();
+        params.push(&limit_i64);
+
+        let rows = stmt.query_map(params.as_slice(), row_to_fact)?;
+        let mut results = Vec::new();
+        for row in rows {
+            results.push(row?);
+        }
+        Ok(results)
+    }
+
     /// Reason: facts connected to MULTIPLE entities simultaneously.
     /// Finds facts that mention ALL of the given entities.
     pub fn reason(&self, entities: &[&str]) -> SqlResult<Vec<Fact>> {

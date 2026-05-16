@@ -281,8 +281,7 @@ impl LlmProvider for AnthropicProvider {
                 let text = String::from_utf8_lossy(&chunk);
 
                 for line in text.lines() {
-                    if line.starts_with("data: ") {
-                        let data = &line[6..];
+                    if let Some(data) = line.strip_prefix("data: ") {
                         if let Ok(json) = serde_json::from_str::<serde_json::Value>(data) {
                             if let Some(type_name) = json["type"].as_str() {
                                 if type_name == "content_block_delta" {

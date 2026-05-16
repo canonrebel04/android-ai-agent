@@ -139,8 +139,7 @@ impl LlmProvider for OpenRouterProvider {
                 let text = String::from_utf8_lossy(&chunk);
 
                 for line in text.lines() {
-                    if line.starts_with("data: ") {
-                        let data = &line[6..];
+                    if let Some(data) = line.strip_prefix("data: ") {
                         if data == "[DONE]" {
                             break;
                         }

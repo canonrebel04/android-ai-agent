@@ -105,18 +105,18 @@ fn is_common_word(word: &str) -> bool {
 /// Full probe pipeline: extract entities → probe fact_store for each → deduplicate → rank.
 pub fn probe_all(store: &FactStore, text: &str) -> Vec<ProbeResult> {
     let entities = extract_entities(text);
-    let mut seen: HashSet<i64> = HashSet::new();
     let mut results = Vec::new();
+    if entities.is_empty() {
+        return results;
+    }
 
-    for entity in &entities {
-        if let Ok(facts) = store.probe(entity) {
-            for fact in facts {
-                if seen.insert(fact.id) {
-                    // Relevance = trust * (1 if exact entity match, 0.5 if partial)
-                    let relevance = fact.trust;
-                    results.push(ProbeResult { fact, relevance });
-                }
-            }
+    let entity_refs: Vec<&str> = entities.iter().map(|s| s.as_str()).collect();
+    let limit = (entities.len() * 50).clamp(100, 500);
+
+    if let Ok(facts) = store.probe_batched(&entity_refs, limit) {
+        for fact in facts {
+            let relevance = fact.trust;
+            results.push(ProbeResult { fact, relevance });
         }
     }
 
@@ -132,34 +132,33 @@ pub fn probe_all(store: &FactStore, text: &str) -> Vec<ProbeResult> {
 
 /// Deep reason: for each pair of entities, find facts connecting both.
 pub fn reason_all(store: &FactStore, entities: &[&str]) -> Vec<Fact> {
-    let mut seen: HashSet<i64> = HashSet::new();
-    let mut results = Vec::new();
-
-    // Try all entity pairs
-    for i in 0..entities.len() {
-        for j in (i + 1)..entities.len() {
-            if let Ok(facts) = store.reason(&[entities[i], entities[j]]) {
-                for fact in facts {
-                    if seen.insert(fact.id) {
-                        results.push(fact);
-                    }
-                }
-            }
-        }
+    if entities.is_empty() {
+        return Vec::new();
     }
 
-    // Also try single-entity probes for uncovered entities
-    for entity in entities {
-        if let Ok(facts) = store.probe(entity) {
-            for fact in facts {
-                if seen.insert(fact.id) {
-                    results.push(fact);
-                }
-            }
-        }
-    }
+    let limit = (entities.len() * 30).clamp(100, 500);
+    let mut facts = store.probe_batched(entities, limit).unwrap_or_default();
 
-    results
+    // Sort to prioritize facts that match MULTIPLE entities
+    facts.sort_by(|a, b| {
+        // Count how many of the query entities are present in this fact's entities
+        let a_matches = entities
+            .iter()
+            .filter(|&&e| a.entities.iter().any(|fe| fe.contains(e) || e.contains(fe)))
+            .count();
+        let b_matches = entities
+            .iter()
+            .filter(|&&e| b.entities.iter().any(|fe| fe.contains(e) || e.contains(fe)))
+            .count();
+
+        b_matches.cmp(&a_matches).then(
+            b.trust
+                .partial_cmp(&a.trust)
+                .unwrap_or(std::cmp::Ordering::Equal),
+        )
+    });
+
+    facts
 }
 
 /// Search for a topic with entity-aware boosting.
