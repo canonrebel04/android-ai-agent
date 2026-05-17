@@ -563,5 +563,6 @@ private fun GatewayCard() {
 
 private fun generateFakeToken(): String {
     val chars = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789"
-    return (1..48).map { chars.random() }.joinToString("")
+    val random = java.security.SecureRandom()
+    return (1..48).map { chars[random.nextInt(chars.length)] }.joinToString("")
 }

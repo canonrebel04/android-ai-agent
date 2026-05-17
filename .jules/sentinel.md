@@ -14,3 +14,8 @@
 **Vulnerability:** The `LinuxSandbox.kt` component used `e.printStackTrace()` for error handling, which violates the project's codebase review standards that mandate using `android.util.Log` for logging exceptions. `printStackTrace()` can potentially leak sensitive application state or stack traces to standard error streams, which might be improperly captured or exposed in production environments.
 **Learning:** In Android components, standard Java error output streams (`System.err` via `printStackTrace()`) bypass the structured Android logging system (`Logcat`). This can lead to unmanaged information leakage and difficulty in securely monitoring and filtering application logs.
 **Prevention:** Always utilize the Android `Log` class (e.g., `Log.e(TAG, "Message", e)`) to properly handle exception stack traces, ensuring they are routed through the managed and secure Android logging infrastructure instead of raw output streams.
+
+## 2024-05-17 - Weak random number generation for Auth Token
+**Vulnerability:** The Gateway auth token was generated using `chars.random()`, which relies on a weak PRNG (`java.util.Random`).
+**Learning:** Default random functions in Kotlin are not cryptographically secure and should not be used for security-sensitive tokens.
+**Prevention:** Always use `java.security.SecureRandom` for generating authentication tokens, API keys, and other security-sensitive random values.
