@@ -40,8 +40,12 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.material.icons.filled.Visibility
+import androidx.compose.material.icons.filled.VisibilityOff
+import androidx.compose.material3.IconButton
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.input.PasswordVisualTransformation
+import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
@@ -73,6 +77,7 @@ fun SettingsScreen(viewModel: AgentViewModel) {
     // Telegram configuration state
     var telegramEnabled by remember { mutableStateOf(false) }
     var telegramToken by remember { mutableStateOf("") }
+    var passwordVisible by remember { mutableStateOf(false) }
     val context = LocalContext.current
     val coroutineScope = rememberCoroutineScope()
 
@@ -297,7 +302,7 @@ fun SettingsScreen(viewModel: AgentViewModel) {
                 },
                 modifier = Modifier.fillMaxWidth(),
             ) {
-                Icon(Icons.Default.Send, contentDescription = "Save")
+                Icon(Icons.Default.Send, contentDescription = null)
                 Spacer(modifier = Modifier.width(8.dp))
                 Text("Save Notification Settings")
             }
@@ -416,7 +421,18 @@ fun SettingsScreen(viewModel: AgentViewModel) {
                 onValueChange = { telegramToken = it },
                 label = { Text("Bot Token") },
                 keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password),
-                visualTransformation = PasswordVisualTransformation(),
+                visualTransformation = if (passwordVisible) VisualTransformation.None else PasswordVisualTransformation(),
+                trailingIcon = {
+                    val image = if (passwordVisible)
+                        Icons.Filled.Visibility
+                    else Icons.Filled.VisibilityOff
+
+                    val description = if (passwordVisible) "Hide password" else "Show password"
+
+                    IconButton(onClick = { passwordVisible = !passwordVisible }) {
+                        Icon(imageVector = image, contentDescription = description)
+                    }
+                },
                 singleLine = true,
                 modifier = Modifier.fillMaxWidth(),
             )
@@ -447,7 +463,7 @@ fun SettingsScreen(viewModel: AgentViewModel) {
                 modifier = Modifier.fillMaxWidth(),
                 enabled = telegramEnabled && telegramToken.isNotBlank()
             ) {
-                Icon(Icons.Default.Send, contentDescription = "Start")
+                Icon(Icons.Default.Send, contentDescription = null)
                 Spacer(modifier = Modifier.width(8.dp))
                 Text("Start Telegram Bot")
             }

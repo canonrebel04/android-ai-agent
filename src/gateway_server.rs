@@ -1,10 +1,24 @@
 use futures_util::{SinkExt, StreamExt};
 use serde::{Deserialize, Serialize};
+use sha2::{Digest, Sha256};
 use std::net::SocketAddr;
 use tokio::net::{TcpListener, TcpStream};
 use tokio_tungstenite::accept_hdr_async;
 use tokio_tungstenite::tungstenite::handshake::server::{ErrorResponse, Request, Response};
 use tokio_tungstenite::tungstenite::Message;
+
+/// Constant-time comparison to prevent timing attacks.
+/// Hashes both inputs first to normalize length.
+fn secure_compare(a: &str, b: &str) -> bool {
+    let hash_a = Sha256::digest(a.as_bytes());
+    let hash_b = Sha256::digest(b.as_bytes());
+
+    let mut result = 0;
+    for (byte_a, byte_b) in hash_a.iter().zip(hash_b.iter()) {
+        result |= byte_a ^ byte_b;
+    }
+    result == 0
+}
 
 /// WebSocket message protocol — client to agent
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -102,8 +116,9 @@ async fn handle_connection(
             let valid = match auth_header {
                 Some(val) => {
                     let token_str = val.to_str().unwrap_or("");
-                    token_str == format!("Bearer {}", expected_token)
-                        || token_str == expected_token.as_str()
+                    let expected_bearer = format!("Bearer {}", expected_token);
+                    secure_compare(token_str, &expected_bearer)
+                        || secure_compare(token_str, expected_token.as_str())
                 }
                 None => false,
             };
@@ -252,5 +267,28 @@ mod tests {
     fn test_server_new() {
         let server = GatewayServer::new(8765).with_auth("secret".into());
         assert!(server._auth_token.is_some());
+    }
+
+    #[tokio::test]
+    async fn test_auth_rejection_no_token() {
+        use tokio_tungstenite::tungstenite::client::IntoClientRequest;
+        let server = GatewayServer::new(8766).with_auth("secret123".into());
+
+        let server_addr = server.addr;
+        tokio::spawn(async move {
+            let _ = server.start().await;
+        });
+
+        tokio::time::sleep(tokio::time::Duration::from_millis(100)).await;
+
+        let req = format!("ws://{}", server_addr).into_client_request().unwrap();
+
+        let result = tokio_tungstenite::connect_async(req).await;
+        assert!(result.is_err(), "Connection without token should fail");
+        if let Err(tokio_tungstenite::tungstenite::Error::Http(response)) = result {
+            assert_eq!(response.status(), 401);
+        } else {
+            panic!("Expected Http error with 401 status");
+        }
     }
 }

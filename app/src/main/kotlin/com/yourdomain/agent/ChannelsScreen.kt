@@ -45,6 +45,13 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Visibility
+import androidx.compose.material.icons.filled.VisibilityOff
+import androidx.compose.material3.IconButton
+import androidx.compose.material3.Icon
+import androidx.compose.ui.text.input.PasswordVisualTransformation
+import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.semantics.semantics
 import android.content.Intent
 import kotlinx.coroutines.Dispatchers
@@ -99,6 +106,7 @@ private fun TelegramCard() {
     var enabled by remember { mutableStateOf(false) }
     var botToken by remember { mutableStateOf("") }
     var testResult by remember { mutableStateOf<String?>(null) }
+    var passwordVisible by remember { mutableStateOf(false) }
     val context = LocalContext.current
     val coroutineScope = rememberCoroutineScope()
 
@@ -181,6 +189,19 @@ private fun TelegramCard() {
                         value = botToken,
                         onValueChange = { botToken = it },
                         label = { Text("Bot Token") },
+                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password),
+                        visualTransformation = if (passwordVisible) VisualTransformation.None else PasswordVisualTransformation(),
+                        trailingIcon = {
+                            val image = if (passwordVisible)
+                                Icons.Filled.Visibility
+                            else Icons.Filled.VisibilityOff
+
+                            val description = if (passwordVisible) "Hide password" else "Show password"
+
+                            IconButton(onClick = { passwordVisible = !passwordVisible }) {
+                                Icon(imageVector = image, contentDescription = description)
+                            }
+                        },
                         singleLine = true,
                         modifier = Modifier.fillMaxWidth(),
                         textStyle = MaterialTheme.typography.bodyMedium.copy(
@@ -542,5 +563,6 @@ private fun GatewayCard() {
 
 private fun generateFakeToken(): String {
     val chars = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789"
-    return (1..48).map { chars.random() }.joinToString("")
+    val random = java.security.SecureRandom()
+    return (1..48).map { chars[random.nextInt(chars.length)] }.joinToString("")
 }

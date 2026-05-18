@@ -299,8 +299,9 @@ class TerminalViewModel : androidx.lifecycle.ViewModel() {
                         if (result != null) {
                             val (exitCode, output) = result
                             if (exitCode == 0) {
-                                // Split output by newlines and add each line
-                                output.split("\n").forEach { line ->
+                                // Bolt ⚡ Optimization: Use lineSequence() instead of split("\n")
+                                // This prevents creating a large intermediate collection when processing command output
+                                output.lineSequence().forEach { line ->
                                     if (line.isNotBlank()) {
                                         addToOutput(line)
                                     }
@@ -308,7 +309,8 @@ class TerminalViewModel : androidx.lifecycle.ViewModel() {
                             } else {
                                 addToOutput("Error: Command exited with code $exitCode", isError = true)
                                 if (output.isNotBlank()) {
-                                    output.split("\n").forEach { line ->
+                                    // Bolt ⚡ Optimization: Use lineSequence() instead of split("\n")
+                                    output.lineSequence().forEach { line ->
                                         if (line.isNotBlank()) {
                                             addToOutput(line, isError = true)
                                         }
